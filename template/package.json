@@ -21,18 +21,17 @@
     }
   },
   "dependencies": {
-    "@nuxtjs/tailwindcss": "latest",
-    "@oevery/nuva": "latest",
-    "alova": "latest",
-    "nuxt": "latest"
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@oevery/nuva": "workspace:*",
+    "alova": "^3.5.1",
+    "nuxt": "^4.4.6"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "latest",
-    "@nuxt/eslint": "latest",
-    "@types/node": "latest",
-    "eslint": "latest",
-    "eslint-plugin-format": "latest",
-    "skills": "latest",
-    "typescript": "latest"
+    "@antfu/eslint-config": "^9.0.0",
+    "@nuxt/eslint": "^1.15.2",
+    "@types/node": "^25.9.1",
+    "eslint": "^10.4.0",
+    "eslint-plugin-format": "^2.0.1",
+    "typescript": "^6.0.3"
   }
 }

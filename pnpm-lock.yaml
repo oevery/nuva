@@ -211,32 +211,32 @@ importers:
   .:
     dependencies:
       alova:
-        specifier: latest
+        specifier: ^3.5.1
         version: 3.5.1
     devDependencies:
       '@antfu/eslint-config':
-        specifier: latest
+        specifier: ^9.0.0
         version: 9.0.0(@typescript-eslint/rule-tester@8.60.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3))(@typescript-eslint/typescript-estree@8.60.0(typescript@6.0.3))(@typescript-eslint/utils@8.60.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.35)(eslint-plugin-format@2.0.1(eslint@10.4.0(jiti@2.7.0)))(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3)
       '@nuxt/eslint':
-        specifier: latest
+        specifier: ^1.15.2
         version: 1.15.2(@typescript-eslint/utils@8.60.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.35)(eslint-plugin-format@2.0.1(eslint@10.4.0(jiti@2.7.0)))(eslint@10.4.0(jiti@2.7.0))(magicast@0.5.3)(typescript@6.0.3)(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
       '@nuxtjs/tailwindcss':
-        specifier: latest
+        specifier: ^6.14.0
         version: 6.14.0(magicast@0.5.3)(yaml@2.9.0)
       '@types/node':
-        specifier: latest
+        specifier: ^25.9.1
         version: 25.9.1
       eslint:
-        specifier: latest
+        specifier: ^10.4.0
         version: 10.4.0(jiti@2.7.0)
       eslint-plugin-format:
-        specifier: latest
+        specifier: ^2.0.1
         version: 2.0.1(eslint@10.4.0(jiti@2.7.0))
       nuxt:
-        specifier: latest
+        specifier: ^4.4.6
         version: 4.4.6(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7))(@parcel/watcher@2.5.6)(@types/node@25.9.1)(@vue/compiler-sfc@3.5.35)(cac@6.7.14)(db0@0.3.4)(eslint@10.4.0(jiti@2.7.0))(ioredis@5.11.0)(magicast@0.5.3)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.60.4))(rollup@4.60.4)(srvx@0.11.16)(terser@5.48.0)(typescript@6.0.3)(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))(yaml@2.9.0)
       typescript:
-        specifier: latest
+        specifier: ^6.0.3
         version: 6.0.3
 
   core:
@@ -254,38 +254,35 @@ importers:
   template:
     dependencies:
       '@nuxtjs/tailwindcss':
-        specifier: latest
+        specifier: ^6.14.0
         version: 6.14.0(magicast@0.5.3)(yaml@2.9.0)
       '@oevery/nuva':
         specifier: workspace:*
         version: link:../core
       alova:
-        specifier: latest
+        specifier: ^3.5.1
         version: 3.5.1
       nuxt:
-        specifier: latest
+        specifier: ^4.4.6
         version: 4.4.6(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7))(@parcel/watcher@2.5.6)(@types/node@25.9.1)(@vue/compiler-sfc@3.5.35)(cac@6.7.14)(db0@0.3.4)(eslint@10.4.0(jiti@2.7.0))(ioredis@5.11.0)(magicast@0.5.3)(optionator@0.9.4)(rollup-plugin-visualizer@7.0.1(rollup@4.60.4))(rollup@4.60.4)(srvx@0.11.16)(terser@5.48.0)(typescript@6.0.3)(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))(yaml@2.9.0)
     devDependencies:
       '@antfu/eslint-config':
-        specifier: latest
+        specifier: ^9.0.0
         version: 9.0.0(@typescript-eslint/rule-tester@8.60.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3))(@typescript-eslint/typescript-estree@8.60.0(typescript@6.0.3))(@typescript-eslint/utils@8.60.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.35)(eslint-plugin-format@2.0.1(eslint@10.4.0(jiti@2.7.0)))(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3)
       '@nuxt/eslint':
-        specifier: latest
+        specifier: ^1.15.2
         version: 1.15.2(@typescript-eslint/utils@8.60.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.35)(eslint-plugin-format@2.0.1(eslint@10.4.0(jiti@2.7.0)))(eslint@10.4.0(jiti@2.7.0))(magicast@0.5.3)(typescript@6.0.3)(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
       '@types/node':
-        specifier: latest
+        specifier: ^25.9.1
         version: 25.9.1
       eslint:
-        specifier: latest
+        specifier: ^10.4.0
         version: 10.4.0(jiti@2.7.0)
       eslint-plugin-format:
-        specifier: latest
+        specifier: ^2.0.1
         version: 2.0.1(eslint@10.4.0(jiti@2.7.0))
-      skills:
-        specifier: latest
-        version: 1.5.9
       typescript:
-        specifier: latest
+        specifier: ^6.0.3
         version: 6.0.3
 
 packages:
@@ -4969,11 +4966,6 @@ packages:
 
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
-
-  skills@1.5.9:
-    resolution: {integrity: sha512-BjxnhlIy5IrQ30q1nGgNDSf4gy84iNA2o4Ieq4im/HsRvOjGtqvDNpb/xx15FZryXMnAPeDUWqU1ndPRQ0IyOQ==}
-    engines: {node: '>=18'}
-    hasBin: true
 
   slash@5.1.0:
     resolution: {integrity: sha512-ZA6oR3T/pEyuqwMgAKT0/hAv8oAXckzbkmR0UkUosQ+Mc4RxGoJkRmwHgHufaenlyAgE1Mxgpdcrf75y6XcnDg==}
@@ -10717,10 +10709,6 @@ snapshots:
       totalist: 3.0.1
 
   sisteransi@1.0.5: {}
-
-  skills@1.5.9:
-    dependencies:
-      yaml: 2.9.0
 
   slash@5.1.0: {}
 
