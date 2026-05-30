@@ -17,28 +17,6 @@ pnpm install
 pnpm dev
 ```
 
-## Skills
-
-如果使用模板内置 skills，可在安装依赖后同步：
-
-```bash
-pnpm skills:install
-```
-
-也可以直接使用：
-
-```bash
-npx skills experimental_install
-pnpx skills experimental_install
-```
-
-更新 skills：
-
-```bash
-npx skills update
-pnpx skills update
-```
-
 ## 常用命令
 
 ```bash
@@ -55,6 +33,7 @@ pnpm typecheck  # Nuxt 类型检查
 - [架构说明](./docs/architecture.md)
 - [请求体系](./docs/request.md)
 - [模板扩展](./docs/template.md)
+- [AI 增强](./docs/ai.md)
 
 ## 核心约定
 

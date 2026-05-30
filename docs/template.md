@@ -119,20 +119,4 @@ const nuva = {
 }
 ```
 
-## Skills
-
-如果通过 gigit 单独下载 `template`，安装依赖后可同步模板推荐的 skills：
-
-```bash
-npx skills experimental_install
-pnpx skills experimental_install
-```
-
-更新 skills：
-
-```bash
-npx skills update
-pnpx skills update
-```
-
-`.agents/` 是本地安装产物，不需要提交到业务仓库。
+AI 辅助开发能力见 [AI 增强](./ai.md)。
