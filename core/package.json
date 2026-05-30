@@ -28,5 +28,8 @@
     "@nuxtjs/tailwindcss": ">=6.0.0",
     "alova": ">=3.0.0",
     "nuxt": ">=4.0.0"
+  },
+  "dependencies": {
+    "ohash": "^2.0.11"
   }
 }

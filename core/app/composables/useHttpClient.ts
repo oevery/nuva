@@ -2,6 +2,7 @@ import type { NuvaApiConfig } from '../types/config'
 import { createAlova } from 'alova'
 import adapterFetch from 'alova/fetch'
 import NuxtHook from 'alova/nuxt'
+import { hash } from 'ohash'
 import { resolveNuxtBaseURL } from '../utils/http/config'
 
 const httpClients = new Map<string, ReturnType<typeof createHttpClient>>()
@@ -26,7 +27,12 @@ export function createHttpClient(apiConfig: NuvaApiConfig) {
 }
 
 function getHttpClientCacheKey(apiConfig: NuvaApiConfig) {
-  return resolveNuxtBaseURL(apiConfig.baseURL)
+  return `nuva:http:${hash({
+    baseURL: resolveNuxtBaseURL(apiConfig.baseURL),
+    envelopeUnwrap: apiConfig.envelopeUnwrap,
+    successCodes: apiConfig.successCodes,
+    token: apiConfig.token,
+  })}`
 }
 
 export function useHttpClient() {
