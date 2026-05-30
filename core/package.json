@@ -1,0 +1,28 @@
+{
+  "name": "@oevery/nuva",
+  "type": "module",
+  "version": "0.0.0",
+  "private": false,
+  "description": "Reusable Nuxt full-stack layer for Nuva applications.",
+  "license": "MIT",
+  "exports": {
+    ".": "./nuxt.config.ts",
+    "./nuxt.config": "./nuxt.config.ts",
+    "./app/types/config": "./app/types/config.ts",
+    "./app/*": "./app/*"
+  },
+  "files": [
+    "app",
+    "nuxt.config.ts",
+    "tailwind.config.js",
+    "tsconfig.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@nuxtjs/tailwindcss": ">=6.0.0",
+    "alova": ">=3.0.0",
+    "nuxt": ">=4.0.0"
+  }
+}

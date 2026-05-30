@@ -1,0 +1,38 @@
+{
+  "name": "nuva-app",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "nuxt prepare",
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.5.0",
+      "onFail": "download"
+    }
+  },
+  "dependencies": {
+    "@nuxtjs/tailwindcss": "latest",
+    "@oevery/nuva": "latest",
+    "alova": "latest",
+    "nuxt": "latest"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "latest",
+    "@nuxt/eslint": "latest",
+    "@types/node": "latest",
+    "eslint": "latest",
+    "eslint-plugin-format": "latest",
+    "skills": "latest",
+    "typescript": "latest"
+  }
+}

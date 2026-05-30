@@ -1,0 +1,20 @@
+shellEmulator: true
+
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 4320
+
+packages:
+  - core
+  - template
+
+overrides:
+  '@oevery/nuva': 'workspace:*'
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+  - unrs-resolver
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  unrs-resolver: true

@@ -1,0 +1,40 @@
+{
+  "name": "nuva",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Nuxt full-stack scaffold with a reusable core layer and business template.",
+  "author": "",
+  "license": "MIT",
+  "keywords": [],
+  "scripts": {
+    "dev": "pnpm --filter nuva-app dev",
+    "build": "pnpm --filter nuva-app build",
+    "generate": "pnpm --filter nuva-app generate",
+    "preview": "pnpm --filter nuva-app preview",
+    "prepare": "pnpm --filter nuva-app prepare",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "pnpm --filter nuva-app typecheck"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.5.0",
+      "onFail": "download"
+    }
+  },
+  "dependencies": {
+    "alova": "latest"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "latest",
+    "@nuxt/eslint": "latest",
+    "@nuxtjs/tailwindcss": "latest",
+    "@types/node": "latest",
+    "eslint": "latest",
+    "eslint-plugin-format": "latest",
+    "nuxt": "latest",
+    "typescript": "latest"
+  }
+}
