@@ -18,7 +18,10 @@
     "tsconfig.json"
   ],
   "scripts": {
+    "check": "pnpm prepare && pnpm typecheck",
     "prepare": "nuxt prepare",
+    "prepack": "pnpm check",
+    "prepublishOnly": "pnpm check",
     "typecheck": "nuxt typecheck"
   },
   "publishConfig": {
