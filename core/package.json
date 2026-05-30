@@ -17,6 +17,10 @@
     "tailwind.config.js",
     "tsconfig.json"
   ],
+  "scripts": {
+    "prepare": "nuxt prepare",
+    "typecheck": "nuxt typecheck"
+  },
   "publishConfig": {
     "access": "public"
   },

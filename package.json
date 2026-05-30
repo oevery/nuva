@@ -12,10 +12,10 @@
     "build": "pnpm --filter nuva-app build",
     "generate": "pnpm --filter nuva-app generate",
     "preview": "pnpm --filter nuva-app preview",
-    "prepare": "pnpm --filter nuva-app prepare",
+    "prepare": "pnpm --filter @oevery/nuva prepare && pnpm --filter nuva-app prepare",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "pnpm --filter nuva-app typecheck"
+    "typecheck": "pnpm --filter @oevery/nuva typecheck && pnpm --filter nuva-app typecheck"
   },
   "devEngines": {
     "packageManager": {
