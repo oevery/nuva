@@ -4,10 +4,9 @@ import { handleHttpResponse } from './response'
 import { applyToken, getAuthToken } from './token'
 
 export function useDefaultHttpRequestHooks(config: NuvaApiConfig) {
-  const token = getAuthToken(config.token)
-
   return {
     beforeRequest(method: Method) {
+      const token = getAuthToken(config.token)
       applyToken(method, token, config.token)
     },
     onSuccess(response: Response, method: Method) {
