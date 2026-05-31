@@ -1,9 +1,7 @@
 import type { Method } from 'alova'
 import type { NuvaApiTokenConfig } from '../../types/config'
 
-export function getAuthToken(config: NuvaApiTokenConfig) {
-  const cookieToken = useCookie<string | null>(config.cookieName).value
-
+export function getAuthToken(cookieToken: string | null | undefined, config: NuvaApiTokenConfig) {
   if (import.meta.client && config.storageKey) {
     return localStorage.getItem(config.storageKey) || cookieToken
   }

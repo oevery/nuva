@@ -5,7 +5,9 @@ import NuxtHook from 'alova/nuxt'
 import { hash } from 'ohash'
 import { resolveNuxtBaseURL } from '../utils/http/config'
 
-const httpClients = new Map<string, ReturnType<typeof createHttpClient>>()
+type HttpClient = ReturnType<typeof createHttpClient>
+
+const httpClients = new Map<string, HttpClient>()
 
 export function createHttpClient(apiConfig: NuvaApiConfig) {
   const baseURL = resolveNuxtBaseURL(apiConfig.baseURL)
@@ -35,17 +37,35 @@ function getHttpClientCacheKey(apiConfig: NuvaApiConfig) {
   })}`
 }
 
-export function useHttpClient() {
-  const config = useRuntimeConfig()
-  const apiConfig = config.public.nuva.api
-  const cacheKey = getHttpClientCacheKey(apiConfig)
-  const httpClient = httpClients.get(cacheKey)
+function getHttpClientFromCache(cache: Map<string, HttpClient>, cacheKey: string, apiConfig: NuvaApiConfig) {
+  const httpClient = cache.get(cacheKey)
 
   if (httpClient) {
     return httpClient
   }
 
   const newHttpClient = createHttpClient(apiConfig)
-  httpClients.set(cacheKey, newHttpClient)
+  cache.set(cacheKey, newHttpClient)
   return newHttpClient
+}
+
+function getServerHttpClient(cacheKey: string, apiConfig: NuvaApiConfig) {
+  const nuxtApp = useNuxtApp() as ReturnType<typeof useNuxtApp> & {
+    _nuvaHttpClients?: Map<string, HttpClient>
+  }
+
+  nuxtApp._nuvaHttpClients ||= new Map<string, HttpClient>()
+  return getHttpClientFromCache(nuxtApp._nuvaHttpClients, cacheKey, apiConfig)
+}
+
+export function useHttpClient() {
+  const config = useRuntimeConfig()
+  const apiConfig = config.public.nuva.api
+  const cacheKey = getHttpClientCacheKey(apiConfig)
+
+  if (import.meta.server) {
+    return getServerHttpClient(cacheKey, apiConfig)
+  }
+
+  return getHttpClientFromCache(httpClients, cacheKey, apiConfig)
 }

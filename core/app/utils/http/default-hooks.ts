@@ -4,9 +4,11 @@ import { handleHttpResponse } from './response'
 import { applyToken, getAuthToken } from './token'
 
 export function useDefaultHttpRequestHooks(config: NuvaApiConfig) {
+  const cookieToken = useCookie<string | null>(config.token.cookieName)
+
   return {
     beforeRequest(method: Method) {
-      const token = getAuthToken(config.token)
+      const token = getAuthToken(cookieToken.value, config.token)
       applyToken(method, token, config.token)
     },
     onSuccess(response: Response, method: Method) {
