@@ -3,6 +3,9 @@ import { defaultNuvaPublicConfig } from './app/types/config'
 
 export default defineNuxtConfig({
   srcDir: 'app',
+  experimental: {
+    typedPages: true,
+  },
   typescript: {
     nodeTsConfig: {
       compilerOptions: {
