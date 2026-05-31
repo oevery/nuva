@@ -119,6 +119,17 @@ const { data, loading, page, pageSize, total } = useUserTable()
 </script>
 ```
 
+## VueUse
+
+`core` 已内置 VueUse auto-import，业务代码可直接使用常用组合式函数：
+
+```ts
+const width = useWindowSize().width
+const debouncedSearch = useDebounceFn(search, 300)
+```
+
+`template` 不需要重复安装 `@vueuse/nuxt`。如需显式 `import { useDebounceFn } from '@vueuse/core'`，再由业务项目自行添加对应依赖。
+
 ## 表单校验
 
 前端表单使用 `@vee-validate/nuxt` 和 `@vee-validate/valibot`，不绑定 UI 库。

@@ -15,6 +15,7 @@ template/  # 业务模板，extends @oevery/nuva
 
 - Nuxt layer 配置
 - alova 请求客户端
+- VueUse auto-import
 - 请求配置类型
 - 默认请求 hooks
 - 中性基础 CSS
@@ -49,3 +50,7 @@ template/shared/api/profile.ts  # 业务实体类型
 ## 请求约定
 
 项目统一使用 alova 管理请求，不在业务代码中混用 `useFetch`。简单内部请求、分页、下载和复杂状态都通过 alova 体系处理。
+
+## VueUse 约定
+
+VueUse 由 `core` 作为基础能力提供。业务代码优先使用 Nuxt auto-import，例如直接调用 `useDebounceFn`、`useLocalStorage`、`useWindowSize`，不要在 `template` 重复安装 `@vueuse/nuxt`。

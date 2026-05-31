@@ -1,6 +1,6 @@
 # Nuva
 
-Nuva 是一个基于 Nuxt 4 的全栈脚手架，预置 `alova`、`TailwindCSS` 和 Antfu ESLint Config。
+Nuva 是一个基于 Nuxt 4 的全栈脚手架，预置 `alova`、`TailwindCSS`、VueUse 和 Antfu ESLint Config。
 
 ## 目录
 
@@ -40,5 +40,6 @@ pnpm typecheck  # Nuxt 类型检查
 - `core` 只放基础能力，不放业务接口和业务样式。
 - `template` 放业务页面、业务 API、服务端接口和共享类型。
 - 请求统一使用 alova，不混用 `useFetch`。
+- VueUse 由 `core` 提供，业务代码优先使用 Nuxt auto-import。
 - 接口契约类型放在 `template/shared`。
 - 请求拦截器通过 `template/app/utils/http/hooks.ts` 覆盖。
