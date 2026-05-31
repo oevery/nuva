@@ -33,6 +33,7 @@
     "nuxt": ">=4.0.0"
   },
   "dependencies": {
+    "@nuxt/icon": "catalog:",
     "@vueuse/nuxt": "catalog:",
     "ohash": "catalog:"
   },

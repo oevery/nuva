@@ -130,6 +130,18 @@ const debouncedSearch = useDebounceFn(search, 300)
 
 `template` 不需要重复安装 `@vueuse/nuxt`。如需显式 `import { useDebounceFn } from '@vueuse/core'`，再由业务项目自行添加对应依赖。
 
+## 图标
+
+`core` 已内置 Nuxt Icon，业务组件可直接使用 `<Icon>`：
+
+```vue
+<template>
+  <Icon name="lucide:search" />
+</template>
+```
+
+`template` 不需要重复安装 `@nuxt/icon`。
+
 ## 表单校验
 
 前端表单使用 `@vee-validate/nuxt` 和 `@vee-validate/valibot`，不绑定 UI 库。

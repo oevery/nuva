@@ -15,6 +15,7 @@ template/  # 业务模板，extends @oevery/nuva
 
 - Nuxt layer 配置
 - alova 请求客户端
+- Nuxt Icon 图标组件
 - VueUse auto-import
 - 请求配置类型
 - 默认请求 hooks
@@ -54,3 +55,7 @@ template/shared/api/profile.ts  # 业务实体类型
 ## VueUse 约定
 
 VueUse 由 `core` 作为基础能力提供。业务代码优先使用 Nuxt auto-import，例如直接调用 `useDebounceFn`、`useLocalStorage`、`useWindowSize`，不要在 `template` 重复安装 `@vueuse/nuxt`。
+
+## 图标约定
+
+Nuxt Icon 由 `core` 作为基础 UI 能力提供。业务代码可直接使用 `<Icon name="lucide:search" />`，不要在 `template` 重复安装 `@nuxt/icon`。
