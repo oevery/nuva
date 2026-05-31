@@ -8,13 +8,17 @@
   "license": "MIT",
   "keywords": [],
   "scripts": {
-    "dev": "pnpm --filter nuva-app dev",
-    "build": "pnpm --filter nuva-app build",
-    "generate": "pnpm --filter nuva-app generate",
-    "preview": "pnpm --filter nuva-app preview",
+    "template:dev": "pnpm --filter nuva-app dev",
+    "template:build": "pnpm --filter nuva-app build",
+    "template:generate": "pnpm --filter nuva-app generate",
+    "template:preview": "pnpm --filter nuva-app preview",
+    "dev": "pnpm template:dev",
+    "build": "pnpm template:build",
+    "check": "pnpm lint && pnpm typecheck",
     "prepare": "pnpm --filter @oevery/nuva prepare && pnpm --filter nuva-app prepare",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint . --ignore-pattern template/package.json",
+    "lint:fix": "eslint . --fix --ignore-pattern template/package.json",
+    "release:core": "pnpm --filter @oevery/nuva publish",
     "typecheck": "pnpm --filter @oevery/nuva typecheck && pnpm --filter nuva-app typecheck"
   },
   "devEngines": {
@@ -24,17 +28,11 @@
       "onFail": "download"
     }
   },
-  "dependencies": {
-    "alova": "^3.5.1"
-  },
   "devDependencies": {
-    "@antfu/eslint-config": "^9.0.0",
-    "@nuxt/eslint": "^1.15.2",
-    "@nuxtjs/tailwindcss": "^6.14.0",
-    "@types/node": "^25.9.1",
-    "eslint": "^10.4.0",
-    "eslint-plugin-format": "^2.0.1",
-    "nuxt": "^4.4.6",
-    "typescript": "^6.0.3"
+    "@antfu/eslint-config": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-format": "catalog:",
+    "typescript": "catalog:"
   }
 }

@@ -33,6 +33,13 @@
     "nuxt": ">=4.0.0"
   },
   "dependencies": {
-    "ohash": "^2.0.11"
+    "ohash": "catalog:"
+  },
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "catalog:",
+    "@types/node": "catalog:",
+    "alova": "catalog:",
+    "nuxt": "catalog:",
+    "typescript": "catalog:"
   }
 }

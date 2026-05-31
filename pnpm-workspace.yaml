@@ -10,6 +10,17 @@ packages:
 overrides:
   '@oevery/nuva': 'workspace:*'
 
+catalog:
+  '@antfu/eslint-config': ^9.0.0
+  '@nuxtjs/tailwindcss': ^6.14.0
+  '@types/node': ^25.9.1
+  alova: ^3.5.1
+  eslint: ^10.4.0
+  eslint-plugin-format: ^2.0.1
+  nuxt: ^4.4.6
+  ohash: ^2.0.11
+  typescript: ^6.0.3
+
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - esbuild
