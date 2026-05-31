@@ -123,3 +123,12 @@ template/app/composables/apis/*.ts
 ```
 
 推荐同一业务域一个文件，`useXxxApi` 放接口方法，`useXxxTable` 放分页等状态组合。
+
+## 参数校验
+
+全栈参数校验使用 valibot：
+
+- schema 放在 `template/shared/api`。
+- 服务端接口使用 `v.safeParse` 校验请求参数。
+- 前端表单使用 `@vee-validate/valibot` 的 `toTypedSchema`。
+- 表单示例不绑定 UI 库，直接使用原生 input。

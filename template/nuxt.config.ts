@@ -17,6 +17,9 @@ const nuva = {
 export default defineNuxtConfig({
   extends: ['@oevery/nuva'],
   srcDir: 'app',
+  modules: [
+    '@vee-validate/nuxt',
+  ],
   imports: {
     dirs: [
       'composables/apis',

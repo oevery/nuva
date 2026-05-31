@@ -49,6 +49,10 @@ const { data: profile, error: profileError } = await useProfile()
           {{ profile?.name }} / {{ profile?.layer }} / {{ profile?.status }}
         </p>
       </section>
+
+      <ClientOnly>
+        <ProfileFormExample />
+      </ClientOnly>
     </div>
   </main>
 </template>

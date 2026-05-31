@@ -31,6 +31,12 @@
       "skillPath": "skills/pnpm/SKILL.md",
       "computedHash": "318f9fca2441a3e06fedc336e195dd18be5dbe901064e4fa71b76b40b096ab3a"
     },
+    "valibot": {
+      "source": "open-circle/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/valibot/SKILL.md",
+      "computedHash": "6798b923c1bbe9b07cb8c40470ada09c377d666045caefda90d95577e16e8744"
+    },
     "vite": {
       "source": "antfu/skills",
       "sourceType": "github",

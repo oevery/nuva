@@ -29,6 +29,7 @@ template/  # 业务模板，extends @oevery/nuva
 - 页面和组件
 - `server/api` 服务端接口
 - `shared` 前后端共享类型
+- `shared` 中的 valibot schema
 - `app/composables/apis` 业务 API 和状态 hook
 - `app/utils/http/hooks.ts` 请求拦截器覆盖
 
@@ -40,6 +41,10 @@ template/shared/api/profile.ts  # 业务实体类型
 ```
 
 服务端和前端都从 `#shared` 引用同一份类型。
+
+## 校验约定
+
+全栈参数校验使用 valibot。schema 放在 `template/shared`，服务端接口使用同一份 schema 校验请求参数，前端表单通过 `@vee-validate/valibot` 接入，不绑定任何 UI 库。
 
 ## 请求约定
 

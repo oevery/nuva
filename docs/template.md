@@ -4,14 +4,23 @@
 
 ## 新增共享类型
 
-业务实体类型放到 `template/shared/api`。
+业务实体类型和 valibot schema 放到 `template/shared/api`。
 
 ```ts
 // template/shared/api/user.ts
+import * as v from 'valibot'
+
 export interface User {
   id: number
   name: string
 }
+
+export const userFormSchema = v.object({
+  name: v.pipe(v.string(), v.minLength(2, '名称至少 2 个字符')),
+})
+
+export type UserFormInput = v.InferInput<typeof userFormSchema>
+export type UserFormOutput = v.InferOutput<typeof userFormSchema>
 ```
 
 分页和通用响应类型使用：
@@ -47,6 +56,27 @@ export default defineEventHandler(() => ok<PageResult<User>>({
   pageNum: 1,
   pageSize: 10,
 }))
+```
+
+请求体校验使用共享 schema：
+
+```ts
+const result = v.safeParse(userFormSchema, await readBody(event))
+
+if (!result.success) {
+  const issues = result.issues.map(issue => ({
+    field: issue.path?.map(item => String(item.key)).join('.') || '',
+    message: issue.message,
+    type: issue.type,
+  }))
+
+  throw createError({
+    statusCode: 400,
+    statusMessage: 'Validation Error',
+    message: result.issues[0]?.message || '参数校验失败',
+    data: issues,
+  })
+}
 ```
 
 ## 新增前端 API
@@ -87,6 +117,38 @@ export function useUserTable() {
 <script setup lang="ts">
 const { data, loading, page, pageSize, total } = useUserTable()
 </script>
+```
+
+## 表单校验
+
+前端表单使用 `@vee-validate/nuxt` 和 `@vee-validate/valibot`，不绑定 UI 库。
+
+```ts
+import { toTypedSchema } from '@vee-validate/valibot'
+import { userFormSchema } from '#shared/api/user'
+
+const { defineField, errors, handleSubmit, setFieldError } = useForm({
+  validationSchema: toTypedSchema(userFormSchema),
+})
+
+const [name, nameProps] = defineField('name')
+
+const onSubmit = handleSubmit(async (values) => {
+  try {
+    await userApi.save(values)
+  }
+  catch (error) {
+    const issues = error && typeof error === 'object' && 'data' in error
+      ? (error as { data?: { data?: Array<{ field: string, message: string }> } }).data?.data || []
+      : []
+
+    for (const issue of issues) {
+      if (issue.field === 'name') {
+        setFieldError('name', issue.message)
+      }
+    }
+  }
+})
 ```
 
 ## 覆盖请求 hooks
