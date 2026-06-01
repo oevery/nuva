@@ -27,3 +27,14 @@ export function resolveNuxtBaseURL(baseURL: string) {
 
   return baseURL
 }
+
+export function isSameOriginURL(url: string) {
+  if (!import.meta.server) {
+    return false
+  }
+
+  const requestURL = useRequestURL()
+  const targetURL = new URL(url, requestURL.origin)
+
+  return targetURL.origin === requestURL.origin
+}

@@ -1,6 +1,6 @@
 import type { Method } from 'alova'
+import type { NuvaApiConfig } from '../../../config'
 import type { HttpResponseType } from '../../types/alova'
-import type { NuvaApiConfig } from '../../types/config'
 import { normalizeSuccessCodes } from './config'
 import { resolveResponseType } from './response-type'
 

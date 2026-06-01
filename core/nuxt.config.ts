@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { defaultNuvaPublicConfig } from './app/types/config'
+import { defaultNuvaPublicConfig } from './config'
 
 export default defineNuxtConfig({
   srcDir: 'app',

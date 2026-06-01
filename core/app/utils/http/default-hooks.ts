@@ -1,18 +1,32 @@
 import type { Method } from 'alova'
-import type { NuvaApiConfig } from '../../types/config'
+import type { NuvaPublicConfig } from '../../../config'
+import { isSameOriginURL, resolveNuxtBaseURL } from './config'
 import { handleHttpResponse } from './response'
-import { applyToken, getAuthToken } from './token'
+import { applyAuthHeader, resolveTokenValue } from './token'
 
-export function useDefaultHttpRequestHooks(config: NuvaApiConfig) {
-  const cookieToken = useCookie<string | null>(config.token.cookieName)
+export function useDefaultHttpRequestHooks(config: NuvaPublicConfig) {
+  const { api: apiConfig, auth: authConfig } = config
+  const cookieToken = useCookie<string | null>(authConfig.token.cookieName)
+  const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+  const canForwardCookie = import.meta.server && isSameOriginURL(resolveNuxtBaseURL(apiConfig.baseURL))
 
   return {
     beforeRequest(method: Method) {
-      const token = getAuthToken(cookieToken.value, config.token)
-      applyToken(method, token, config.token)
+      if (canForwardCookie && requestHeaders?.cookie) {
+        method.config.headers = {
+          ...(method.config.headers || {}),
+          cookie: requestHeaders.cookie,
+        }
+      }
+
+      applyAuthHeader(
+        method,
+        resolveTokenValue(cookieToken.value, authConfig.token),
+        authConfig.token,
+      )
     },
     onSuccess(response: Response, method: Method) {
-      return handleHttpResponse(response, method, config)
+      return handleHttpResponse(response, method, apiConfig)
     },
     onError(error: unknown) {
       throw error

@@ -1,25 +1,35 @@
-import type { NuvaPublicConfig } from '@oevery/nuva/app/types/config'
+import type { NuvaApiConfig, NuvaAuthModuleOptions } from '@oevery/nuva/config'
+import { env } from 'node:process'
 
-const nuva = {
-  api: {
-    baseURL: '/api',
-    envelopeUnwrap: true,
-    successCodes: '0,200,SUCCESS',
-    token: {
-      cookieName: 'token',
-      storageKey: 'token',
-      header: 'Authorization',
-      prefix: 'Bearer',
-    },
+const authMode = env.NUVA_AUTH_MODE === 'fullstack' ? 'fullstack' : 'frontend'
+
+const api = {
+  baseURL: '/api',
+  envelopeUnwrap: true,
+  successCodes: '0,200,SUCCESS',
+} satisfies NuvaApiConfig
+
+const auth = {
+  mode: authMode,
+  loginPath: '/login',
+  homePath: '/',
+  redirectQuery: 'redirect',
+  global: true,
+  publicRoutes: ['/login'],
+  betterAuth: {
+    basePath: '/api/auth',
+    serverAuthImport: '~~/server/utils/better-auth',
   },
-} satisfies NuvaPublicConfig
+} satisfies NuvaAuthModuleOptions
 
 export default defineNuxtConfig({
   extends: ['@oevery/nuva'],
   srcDir: 'app',
   modules: [
+    '@oevery/nuva/auth',
     '@vee-validate/nuxt',
   ],
+  nuvaAuth: auth,
   imports: {
     dirs: [
       'composables/apis',
@@ -36,7 +46,9 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      nuva,
+      nuva: {
+        api,
+      },
     },
   },
   compatibilityDate: '2026-05-30',

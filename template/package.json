@@ -27,6 +27,7 @@
     "@vee-validate/nuxt": "^4.15.1",
     "@vee-validate/valibot": "^4.15.1",
     "alova": "^3.5.1",
+    "better-auth": "^1.6.0",
     "nuxt": "^4.4.6",
     "valibot": "^1.4.1"
   },

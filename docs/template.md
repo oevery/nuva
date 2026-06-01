@@ -184,24 +184,99 @@ template/app/utils/http/hooks.ts
 
 不要直接修改 `core`。
 
-## 配置请求
+## 登录态
 
-请求配置在 `template/nuxt.config.ts`：
+`core` 通过可选 auth 模块提供登录态和跳转基础能力，`template` 默认启用 `frontend` 模式并提供可替换的 token/cookie 登录示例：
+
+```txt
+template/shared/api/auth.ts
+template/app/composables/apis/auth.ts
+template/app/pages/login.vue
+template/server/api/demo-auth/login.post.ts
+template/server/api/demo-auth/me.get.ts
+template/server/api/demo-auth/logout.post.ts
+```
+
+auth 模块会自动注册 `auth` route middleware。`template` 默认开启全局保护，普通页面不需要手写 `middleware: 'auth'`；公开页面使用：
 
 ```ts
-const nuva = {
-  api: {
-    baseURL: '/api',
-    envelopeUnwrap: true,
-    successCodes: '0,200,SUCCESS',
-    token: {
-      cookieName: 'token',
-      storageKey: 'token',
-      header: 'Authorization',
-      prefix: 'Bearer',
+definePageMeta({
+  auth: false,
+})
+```
+
+也可以在 `nuvaAuth.publicRoutes` 中配置公开路径，支持精确路径和 `/path/**` 前缀匹配。
+
+未登录访问时会跳转到 `/login?redirect=<当前地址>`，登录成功后通过 `useAuth().afterLogin()` 回跳。
+
+`frontend` 模式只处理前端状态、token 和路由跳转，服务端鉴权由业务接口自行实现。`template/server/utils/auth.ts` 是 demo 实现，生产项目应替换为真实用户体系。
+
+需要 Better Auth 时切到 `fullstack` 模式：
+
+```ts
+export default defineNuxtConfig({
+  modules: ['@oevery/nuva/auth'],
+  nuvaAuth: {
+    mode: 'fullstack',
+    betterAuth: {
+      basePath: '/api/auth',
+      serverAuthImport: '~~/server/utils/better-auth',
     },
   },
-}
+})
 ```
+
+`template/server/utils/better-auth.ts` 提供最小 Better Auth 实例示例。实际项目需要配置 `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`，并按业务选择数据库 adapter 或 stateless session。`/api/auth/**` 保留给 Better Auth，demo 登录接口使用 `/api/demo-auth/*`。
+
+业务 API 继续使用 alova 和 `useHttpClient()`。Better Auth 的协议端点使用官方 client：
+
+```ts
+const { betterAuthClient } = useAuth()
+const authClient = betterAuthClient || useBetterAuth()
+await authClient.signIn.email({
+  email,
+  password,
+})
+```
+
+不要再为 `/api/auth/**` 额外写 alova wrapper；这组端点由 Better Auth client 管理。`useAuth()` 只统一应用层通用能力，Better Auth session 和登录协议仍由 `betterAuthClient` 或 `useBetterAuth()` 处理。`useBetterAuth()` 已做轻量缓存，客户端按 `baseURL` 复用，服务端按请求上下文隔离。
+
+## 配置请求
+
+请求和 auth 配置在 `template/nuxt.config.ts` 中分开维护：
+
+```ts
+const api = {
+  baseURL: '/api',
+  envelopeUnwrap: true,
+  successCodes: '0,200,SUCCESS',
+}
+
+const auth = {
+  mode: 'frontend',
+  loginPath: '/login',
+  homePath: '/',
+  redirectQuery: 'redirect',
+  global: true,
+  publicRoutes: ['/login'],
+  betterAuth: {
+    basePath: '/api/auth',
+    serverAuthImport: '~~/server/utils/better-auth',
+  },
+}
+
+export default defineNuxtConfig({
+  nuvaAuth: auth,
+  runtimeConfig: {
+    public: {
+      nuva: {
+        api,
+      },
+    },
+  },
+})
+```
+
+`runtimeConfig.public.nuva.auth` 不需要在 template 中手写，auth 模块会基于 `nuvaAuth` 和默认值自动生成。
 
 AI 辅助开发能力见 [AI 增强](./ai.md)。

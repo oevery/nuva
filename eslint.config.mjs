@@ -2,9 +2,6 @@ import antfu from '@antfu/eslint-config'
 
 export default antfu({
   formatters: true,
-  pnpm: {
-    catalogs: false,
-  },
   stylistic: {
     indent: 2,
     quotes: 'single',
@@ -15,5 +12,6 @@ export default antfu({
     '**/.nuxt/**',
     '**/.output/**',
     '**/dist/**',
+    'template/package.json',
   ],
 })

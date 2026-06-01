@@ -8,11 +8,16 @@
   "exports": {
     ".": "./nuxt.config.ts",
     "./nuxt.config": "./nuxt.config.ts",
-    "./app/types/config": "./app/types/config.ts",
+    "./auth": "./modules/auth/module.ts",
+    "./config": "./config/index.ts",
+    "./http": "./http/index.ts",
     "./app/*": "./app/*"
   },
   "files": [
     "app",
+    "config",
+    "http",
+    "modules",
     "nuxt.config.ts",
     "tailwind.config.js",
     "tsconfig.json"
@@ -35,9 +40,12 @@
   "dependencies": {
     "@nuxt/icon": "catalog:",
     "@vueuse/nuxt": "catalog:",
+    "better-auth": "catalog:",
+    "defu": "catalog:",
     "ohash": "catalog:"
   },
   "devDependencies": {
+    "@nuxt/kit": "catalog:",
     "@nuxtjs/tailwindcss": "catalog:",
     "@types/node": "catalog:",
     "alova": "catalog:",

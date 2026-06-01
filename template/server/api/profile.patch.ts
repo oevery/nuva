@@ -1,6 +1,7 @@
 import type { ProfileFormOutput } from '#shared/api/profile'
 import type { ApiResponse } from '#shared/api/types'
 import * as v from 'valibot'
+import { requireAuth } from '#server/utils/auth'
 import { ok } from '#server/utils/response'
 import { profileFormSchema } from '#shared/api/profile'
 
@@ -19,6 +20,8 @@ function formatValidationIssues(issues: v.BaseIssue<unknown>[]): ValidationIssue
 }
 
 export default defineEventHandler(async (event): Promise<ApiResponse<ProfileFormOutput>> => {
+  requireAuth(event)
+
   const body = await readBody(event)
   const result = v.safeParse(profileFormSchema, body, {
     abortPipeEarly: true,

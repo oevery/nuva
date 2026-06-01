@@ -1,7 +1,7 @@
 import type { Method } from 'alova'
-import type { NuvaApiTokenConfig } from '../../types/config'
+import type { NuvaAuthTokenConfig } from '../../../config'
 
-export function getAuthToken(cookieToken: string | null | undefined, config: NuvaApiTokenConfig) {
+export function resolveTokenValue(cookieToken: string | null | undefined, config: NuvaAuthTokenConfig) {
   if (import.meta.client && config.storageKey) {
     return localStorage.getItem(config.storageKey) || cookieToken
   }
@@ -9,17 +9,17 @@ export function getAuthToken(cookieToken: string | null | undefined, config: Nuv
   return cookieToken
 }
 
-function formatToken(token: string, prefix: string) {
+function formatAuthHeaderValue(token: string, prefix: string) {
   return prefix ? `${prefix} ${token}` : token
 }
 
-export function applyToken(method: Method, token: string | null | undefined, config: NuvaApiTokenConfig) {
+export function applyAuthHeader(method: Method, token: string | null | undefined, config: NuvaAuthTokenConfig) {
   if (method.meta?.ignoreToken || !token) {
     return
   }
 
   method.config.headers = {
     ...(method.config.headers || {}),
-    [config.header]: formatToken(token, config.prefix),
+    [config.header]: formatAuthHeaderValue(token, config.prefix),
   }
 }
