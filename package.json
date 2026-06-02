@@ -3,6 +3,7 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@11.5.0",
   "description": "Nuxt full-stack scaffold with a reusable core layer and business template.",
   "author": "",
   "license": "MIT",
@@ -12,21 +13,18 @@
     "template:build": "pnpm --filter nuva-app build",
     "template:generate": "pnpm --filter nuva-app generate",
     "template:preview": "pnpm --filter nuva-app preview",
+    "docs:dev": "pnpm --filter nuva-docs dev",
+    "docs:build": "pnpm --filter nuva-docs build",
+    "docs:generate": "pnpm --filter nuva-docs generate",
+    "docs:preview": "pnpm --filter nuva-docs preview",
     "dev": "pnpm template:dev",
     "build": "pnpm template:build",
     "check": "pnpm lint && pnpm typecheck",
-    "prepare": "pnpm --filter @oevery/nuva prepare && pnpm --filter nuva-app prepare",
+    "prepare": "pnpm --filter @oevery/nuva prepare && pnpm --filter nuva-app prepare && pnpm --filter nuva-docs prepare",
     "lint": "eslint . --ignore-pattern template/package.json",
     "lint:fix": "eslint . --fix --ignore-pattern template/package.json",
     "release:core": "pnpm --filter @oevery/nuva publish",
-    "typecheck": "pnpm --filter @oevery/nuva typecheck && pnpm --filter nuva-app typecheck"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.5.0",
-      "onFail": "download"
-    }
+    "typecheck": "pnpm --filter @oevery/nuva typecheck && pnpm --filter nuva-app typecheck && pnpm --filter nuva-docs typecheck"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",

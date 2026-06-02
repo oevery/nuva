@@ -12,8 +12,6 @@ export default antfu({
     '**/.nuxt/**',
     '**/.output/**',
     '**/dist/**',
-    'template/package.json',
-    'docs/package.json',
-    '.kilo/package.json',
+    'package.json',
   ],
 })
