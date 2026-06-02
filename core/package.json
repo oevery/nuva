@@ -19,7 +19,6 @@
     "http",
     "modules",
     "nuxt.config.ts",
-    "tailwind.config.js",
     "tsconfig.json"
   ],
   "scripts": {
@@ -33,20 +32,20 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@nuxtjs/tailwindcss": ">=6.0.0",
     "alova": ">=3.0.0",
     "nuxt": ">=4.0.0"
   },
   "dependencies": {
     "@nuxt/icon": "catalog:",
+    "@tailwindcss/vite": "catalog:",
     "@vueuse/nuxt": "catalog:",
     "better-auth": "catalog:",
     "defu": "catalog:",
-    "ohash": "catalog:"
+    "ohash": "catalog:",
+    "tailwindcss": "catalog:"
   },
   "devDependencies": {
     "@nuxt/kit": "catalog:",
-    "@nuxtjs/tailwindcss": "catalog:",
     "@types/node": "catalog:",
     "alova": "catalog:",
     "nuxt": "catalog:",

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 import { defaultNuvaPublicConfig } from './config'
 
 export default defineNuxtConfig({
@@ -16,9 +17,11 @@ export default defineNuxtConfig({
   modules: [
     '@vueuse/nuxt',
     '@nuxt/icon',
-    '@nuxtjs/tailwindcss',
   ],
-  css: ['~/assets/css/tailwind.css'],
+  css: ['#nuva-core/app/assets/css/nuva-core.css'],
+  vite: {
+    plugins: [tailwindcss()],
+  },
   imports: {
     dirs: [
       'utils/http',

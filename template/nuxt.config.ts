@@ -25,6 +25,7 @@ const auth = {
 export default defineNuxtConfig({
   extends: ['@oevery/nuva'],
   srcDir: 'app',
+  css: ['~/assets/css/main.css'],
   modules: [
     '@oevery/nuva/auth',
     '@vee-validate/nuxt',
