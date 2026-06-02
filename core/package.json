@@ -33,10 +33,12 @@
   },
   "peerDependencies": {
     "alova": ">=3.0.0",
-    "nuxt": ">=4.0.0"
+    "nuxt": ">=4.0.0",
+    "valibot": ">=1.4.1"
   },
   "dependencies": {
     "@nuxt/icon": "catalog:",
+    "@nuxt/kit": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@vueuse/nuxt": "catalog:",
     "better-auth": "catalog:",
@@ -45,7 +47,6 @@
     "tailwindcss": "catalog:"
   },
   "devDependencies": {
-    "@nuxt/kit": "catalog:",
     "@types/node": "catalog:",
     "alova": "catalog:",
     "nuxt": "catalog:",
