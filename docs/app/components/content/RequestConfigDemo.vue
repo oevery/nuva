@@ -18,7 +18,7 @@ const wrappedResponseSample = {
 
 const wrappedResponsePreview = computed(() => JSON.stringify(wrappedResponseSample, null, 2) ?? '')
 
-const runtimeConfigPreview = computed(() => `const api = ${JSON.stringify(config, null, 2)} satisfies NuvaApiConfig`)
+const runtimeConfigPreview = computed(() => `export default defineNuvaConfig({\n  api: ${JSON.stringify(config, null, 2)} satisfies NuvaApiConfig,\n})`)
 
 const parsedSuccessCodes = computed<string[]>(() => config.successCodes.split(',').map(item => item.trim()).filter(Boolean))
 
@@ -64,9 +64,9 @@ const effectiveResult = computed(() => {
 
         <div class="rounded-2xl border border-default bg-neutral-950 p-4 text-sm text-neutral-100">
           <p class="mb-3 font-medium text-neutral-300">
-            nuxt.config.ts
+            nuva.config.ts
           </p>
-          <pre class="overflow-x-auto whitespace-pre-wrap break-all leading-6">{{ runtimeConfigPreview }}</pre>
+          <CodePreview :code="runtimeConfigPreview" language="ts" cache-key="request-config" />
         </div>
       </div>
 
@@ -75,14 +75,18 @@ const effectiveResult = computed(() => {
           <p class="text-sm font-medium text-default">
             输入响应
           </p>
-          <pre class="mt-3 overflow-x-auto whitespace-pre-wrap break-all text-sm leading-6 text-toned">{{ wrappedResponsePreview }}</pre>
+          <div class="mt-3">
+            <CodePreview :code="wrappedResponsePreview" language="json" cache-key="request-input" />
+          </div>
         </div>
 
         <div class="rounded-2xl border border-primary/30 bg-primary/5 p-4">
           <p class="text-sm font-medium text-default">
             useHttpClient() 最终拿到的结果
           </p>
-          <pre class="mt-3 overflow-x-auto whitespace-pre-wrap break-all text-sm leading-6 text-default">{{ effectiveResult }}</pre>
+          <div class="mt-3">
+            <CodePreview :code="effectiveResult" language="json" cache-key="request-output" />
+          </div>
         </div>
       </div>
     </div>

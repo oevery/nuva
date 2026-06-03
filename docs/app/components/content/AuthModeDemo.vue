@@ -63,7 +63,7 @@ const configPreview = computed(() => JSON.stringify({
       </div>
     </div>
 
-    <div class="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+    <div class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_60%]">
       <div class="rounded-2xl border border-default bg-default/80 p-4">
         <ul class="space-y-3 text-sm leading-6 text-default">
           <li v-for="note in modeNotes" :key="note" class="flex gap-3">
@@ -73,11 +73,11 @@ const configPreview = computed(() => JSON.stringify({
         </ul>
       </div>
 
-      <div class="rounded-2xl border border-default bg-neutral-950 p-4 text-sm text-neutral-100">
+      <div class="w-full rounded-2xl border border-default bg-neutral-950 p-4 text-sm text-neutral-100" data-auth-mode-code>
         <p class="mb-3 font-medium text-neutral-300">
           nuvaAuth
         </p>
-        <pre class="overflow-x-auto whitespace-pre-wrap break-all leading-6">{{ configPreview }}</pre>
+        <CodePreview :code="configPreview" language="json" cache-key="auth-mode-config" />
       </div>
     </div>
   </div>

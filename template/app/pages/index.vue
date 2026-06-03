@@ -1,6 +1,19 @@
 <script setup lang="ts">
+const nuva = useNuvaConfig()
+const auth = useAuth()
+
+definePageMeta({
+  auth: {
+    permissions: ['profile:read'],
+  },
+})
+
 // alova NuxtHook requires `await` here to fetch during SSR and sync states to client.
 const { data: profile, error: profileError } = await useProfile()
+const permission = usePermission()
+const canUpdateProfile = computed(() => permission.can('profile:update'))
+const departmentId = computed(() => permission.scope.value?.departmentId)
+const dataAccessType = computed(() => permission.dataAccess.value?.type || 'self')
 </script>
 
 <template>
@@ -48,6 +61,38 @@ const { data: profile, error: profileError } = await useProfile()
         <p v-else class="mt-3 leading-6">
           {{ profile?.name }} / {{ profile?.layer }} / {{ profile?.status }}
         </p>
+      </section>
+
+      <section class="grid gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-slate-200 sm:grid-cols-3">
+        <div>
+          <h2 class="text-base font-semibold text-white">
+            Permission
+          </h2>
+          <p class="mt-2 leading-6">
+            {{ canUpdateProfile ? '可编辑资料' : '只能查看资料' }}
+          </p>
+          <NuvaCan permission="profile:update">
+            <p class="mt-2 text-emerald-200">
+              NuvaCan 已放行编辑动作
+            </p>
+          </NuvaCan>
+        </div>
+        <div>
+          <h2 class="text-base font-semibold text-white">
+            Scope
+          </h2>
+          <p class="mt-2 leading-6">
+            {{ departmentId || '未设置部门作用域' }}
+          </p>
+        </div>
+        <div>
+          <h2 class="text-base font-semibold text-white">
+            Data Access
+          </h2>
+          <p class="mt-2 leading-6">
+            {{ dataAccessType }}
+          </p>
+        </div>
       </section>
 
       <ClientOnly>

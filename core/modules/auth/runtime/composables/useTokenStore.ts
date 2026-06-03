@@ -1,5 +1,7 @@
+import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
+
 export function useTokenStore() {
-  const config = useRuntimeConfig().public.nuva.auth.token
+  const config = useNuvaConfig().auth.token
   const token = useCookie<string | null>(config.cookieName)
 
   function setToken(value: string | null) {

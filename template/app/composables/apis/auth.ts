@@ -1,3 +1,4 @@
+import type { NuvaPermissionState } from '@oevery/nuva/config'
 import type { CurrentUser, LoginFormInput, LoginResult } from '#shared/api/auth'
 import { useRequest } from 'alova/client'
 
@@ -9,6 +10,7 @@ export function useAuthApi() {
       meta: { ignoreToken: true },
     }),
     me: () => http.Get<CurrentUser>('/demo-auth/me'),
+    permissions: () => http.Get<NuvaPermissionState>('/demo-auth/permissions'),
     logout: () => http.Post<null>('/demo-auth/logout'),
   }
 }
@@ -20,8 +22,19 @@ export function useLogin() {
   return useRequest((data: LoginFormInput) => authApi.login(data), {
     immediate: false,
   }).onSuccess(({ data }) => {
-    auth.tokenAuth.setToken(data.token)
-    auth.tokenAuth.setUser(data.user)
+    auth.loginWithToken(data.token, data.user)
+    auth.permission.setPermission(data.user)
+  })
+}
+
+export function useRefreshPermission() {
+  const authApi = useAuthApi()
+  const permission = usePermission()
+
+  return useRequest(authApi.permissions(), {
+    immediate: false,
+  }).onSuccess(({ data }) => {
+    permission.setPermission(data)
   })
 }
 

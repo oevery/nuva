@@ -1,5 +1,8 @@
 import { defineCollection, defineContentConfig, z } from '@nuxt/content'
 
+const buttonColors = ['error', 'primary', 'secondary', 'success', 'info', 'warning', 'neutral'] as const
+const buttonVariants = ['link', 'solid', 'outline', 'soft', 'subtle', 'ghost'] as const
+
 export default defineContentConfig({
   collections: {
     landing: defineCollection({
@@ -13,8 +16,8 @@ export default defineContentConfig({
           links: z.array(z.object({
             label: z.string(),
             to: z.string(),
-            color: z.string().optional(),
-            variant: z.string().optional(),
+            color: z.enum(buttonColors).optional(),
+            variant: z.enum(buttonVariants).optional(),
             trailingIcon: z.string().optional(),
           })),
         }),
@@ -42,7 +45,8 @@ export default defineContentConfig({
           icon: z.string().optional(),
           to: z.string(),
           target: z.string().optional(),
-          variant: z.string().optional(),
+          color: z.enum(buttonColors).optional(),
+          variant: z.enum(buttonVariants).optional(),
           trailingIcon: z.string().optional(),
         })).optional(),
       }),

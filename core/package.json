@@ -7,10 +7,15 @@
   "license": "MIT",
   "exports": {
     ".": "./nuxt.config.ts",
+    "./base": "./modules/nuva/module.ts",
     "./nuxt.config": "./nuxt.config.ts",
     "./auth": "./modules/auth/module.ts",
     "./config": "./config/index.ts",
+    "./nuva-config": "./config/index.ts",
     "./http": "./http/index.ts",
+    "./server/utils/config": "./server/utils/config.ts",
+    "./server/utils/permission": "./server/utils/permission.ts",
+    "./server/*": "./server/*",
     "./app/*": "./app/*"
   },
   "files": [
@@ -19,6 +24,7 @@
     "http",
     "modules",
     "nuxt.config.ts",
+    "server",
     "tsconfig.json"
   ],
   "scripts": {

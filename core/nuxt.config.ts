@@ -17,6 +17,7 @@ export default defineNuxtConfig({
   modules: [
     '@vueuse/nuxt',
     '@nuxt/icon',
+    '@oevery/nuva/base',
   ],
   css: ['#nuva-core/app/assets/css/nuva-core.css'],
   vite: {

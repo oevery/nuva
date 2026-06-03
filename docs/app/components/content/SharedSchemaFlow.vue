@@ -68,7 +68,7 @@ const output = computed(() => {
           <p class="mb-3 font-medium text-neutral-300">
             safeParse 输出
           </p>
-          <pre class="overflow-x-auto whitespace-pre-wrap break-all leading-6">{{ output }}</pre>
+          <CodePreview :code="output" language="json" cache-key="shared-schema-output" />
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import type { LoginResult } from '#shared/api/auth'
 import type { ApiResponse } from '#shared/api/types'
 import * as v from 'valibot'
-import { demoToken, demoUser, setAuthCookie } from '#server/utils/auth'
+import { createDemoToken, demoUser, setAuthCookie, validateDemoCredentials } from '#server/utils/auth'
 import { ok } from '#server/utils/response'
 import { loginFormSchema } from '#shared/api/auth'
 
@@ -19,10 +19,20 @@ export default defineEventHandler(async (event): Promise<ApiResponse<LoginResult
     })
   }
 
-  setAuthCookie(event, demoToken)
+  if (!validateDemoCredentials(result.output.username, result.output.password)) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+      message: '用户名或密码错误',
+    })
+  }
+
+  const token = createDemoToken()
+
+  setAuthCookie(event, token)
 
   return ok({
-    token: demoToken,
+    token,
     user: demoUser,
   }, '登录成功')
 })

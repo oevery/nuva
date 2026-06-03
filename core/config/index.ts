@@ -40,40 +40,158 @@ export interface NuvaApiConfig {
 }
 
 export type NuvaAuthModuleMode = 'frontend' | 'fullstack'
+export type NuvaAuthProvider = 'token' | 'better-auth'
+export type NuvaAuthPreset = 'token' | 'remote' | 'hybrid' | 'better-auth'
+
+export type NuvaPermissionSource = 'local' | 'remote' | 'hybrid' | 'better-auth'
+export type NuvaPermissionProvider = 'local' | 'profile' | 'endpoint' | 'remote' | 'hybrid' | 'better-auth'
+export type NuvaPermissionMatchMode = 'any' | 'all'
+export type NuvaPermissionDecision = 'allow' | 'deny' | 'unknown'
+
+export interface NuvaAccessScope {
+  userId?: string | number
+  tenantId?: string | number
+  organizationId?: string | number
+  departmentId?: string | number
+  storeId?: string | number
+  projectId?: string | number
+  [key: string]: string | number | Array<string | number> | null | undefined
+}
+
+export interface NuvaDataAccess {
+  type: 'all' | 'self' | 'department' | 'organization' | 'tenant' | 'custom'
+  values?: Array<string | number>
+  [key: string]: unknown
+}
+
+export interface NuvaPermissionState {
+  roles: string[]
+  permissions: string[]
+  scope?: NuvaAccessScope
+  dataAccess?: NuvaDataAccess
+  source?: NuvaPermissionSource
+}
+
+export type NuvaRemoteRequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
+export interface NuvaRemoteRequestConfig {
+  url: string
+  method?: NuvaRemoteRequestMethod
+  data?: Record<string, unknown> | Array<unknown>
+  params?: Record<string, unknown> | string
+  headers?: Record<string, string>
+  meta?: Record<string, unknown>
+}
+
+export interface NuvaRemoteResolverContext {
+  request: NuvaRemoteRequestConfig | null
+  config: NuvaResolvedAuthConfig
+  requestWith: <T>(request?: NuvaRemoteRequestConfig | null) => Promise<T>
+}
+
+export type NuvaProfileResolver<TUser = unknown> = (context: NuvaRemoteResolverContext) => Promise<TUser>
+export type NuvaPermissionResolver = (context: NuvaRemoteResolverContext) => Promise<NuvaPermissionState>
+
+export interface NuvaRemotePermissionConfig {
+  profileEndpoint: string
+  permissionEndpoint: string
+  profile: string
+  permission: string
+  profileResolver: boolean
+  permissionResolver: boolean
+  cacheMaxAge: number
+}
+
+export interface NuvaRemotePermissionOptions extends Omit<NuvaRemotePermissionConfig, 'profile' | 'permission'> {
+  profile?: NuvaRemoteRequestConfig | null
+  permission?: NuvaRemoteRequestConfig | null
+}
+
+export interface NuvaResolvedRemotePermissionConfig extends Omit<NuvaRemotePermissionConfig, 'profile' | 'permission'> {
+  profile: NuvaRemoteRequestConfig | null
+  permission: NuvaRemoteRequestConfig | null
+}
+
+export interface NuvaPermissionConfig {
+  provider?: NuvaPermissionProvider
+  source: NuvaPermissionSource
+  forbiddenPath: string
+  permissionMode: NuvaPermissionMatchMode
+  roleMode: NuvaPermissionMatchMode
+  local: NuvaPermissionState
+  remote: NuvaRemotePermissionConfig
+  betterAuth: {
+    hasPermission: boolean
+    organization: boolean
+    dynamicAccessControl: boolean
+  }
+}
+
+export interface NuvaResolvedPermissionConfig extends Omit<NuvaPermissionConfig, 'remote'> {
+  remote: NuvaResolvedRemotePermissionConfig
+}
 
 export interface NuvaAuthConfig {
-  /** 是否启用 Nuva auth 模块能力。 */
+  preset?: NuvaAuthPreset
   enabled: boolean
-  /** auth 模式：frontend 只提供前端状态/路由能力，fullstack 额外接入 Better Auth。 */
   mode: NuvaAuthModuleMode
-  /** 登录页路径，未登录访问受保护页面时会跳转到此路径。 */
+  provider: NuvaAuthProvider
   loginPath: string
-  /** 登录成功后的默认回跳路径。 */
   homePath: string
-  /** 登录跳转时保存来源地址的 query 参数名。 */
   redirectQuery: string
-  /** 是否默认保护所有页面；页面可通过 `definePageMeta({ auth: false })` 跳过。 */
   global: boolean
-  /** 全局保护时跳过的公开页面路径。 */
   publicRoutes: string[]
-  /** token 存储和请求注入配置；单个 method 可通过 `meta.ignoreToken` 跳过。 */
   token: NuvaAuthTokenConfig
-  /** Better Auth 全栈模式配置。 */
+  permission: NuvaPermissionConfig
   betterAuth: {
     basePath: string
     serverAuthImport: string
   }
 }
 
-export interface NuvaAuthModuleOptions extends Partial<Omit<NuvaAuthConfig, 'enabled' | 'token' | 'betterAuth'>> {
+export interface NuvaResolvedAuthConfig extends Omit<NuvaAuthConfig, 'permission'> {
+  permission: NuvaResolvedPermissionConfig
+}
+
+export type NuvaAuthResolverEntry = string
+
+export interface NuvaAuthResolvers {
+  profile?: NuvaAuthResolverEntry
+  permission?: NuvaAuthResolverEntry
+}
+
+export interface NuvaConfigFile {
+  api?: Partial<NuvaApiConfig>
+  auth?: NuvaAuthModuleOptions
+  resolvers?: NuvaAuthResolvers
+}
+
+export interface NuvaModuleOptions extends Partial<NuvaConfigFile> {
+  configFile?: string
+}
+
+export type NuvaAuthProjectConfig = NuvaConfigFile
+
+export interface NuvaAuthModuleOptions extends Partial<Omit<NuvaAuthConfig, 'token' | 'betterAuth' | 'permission'>> {
+  permission?: Partial<Omit<NuvaPermissionConfig, 'local' | 'remote' | 'betterAuth'>> & {
+    local?: Partial<NuvaPermissionState>
+    remote?: Partial<NuvaRemotePermissionOptions>
+    betterAuth?: Partial<NuvaPermissionConfig['betterAuth']>
+  }
   betterAuth?: Partial<NuvaAuthConfig['betterAuth']>
 }
 
 export interface NuvaPublicConfig {
-  /** Nuva API 请求配置。 */
   api: NuvaApiConfig
-  /** Nuva 登录态和跳转配置。 */
   auth: NuvaAuthConfig
+}
+
+export interface NuvaResolvedConfig extends Omit<NuvaPublicConfig, 'auth'> {
+  auth: NuvaResolvedAuthConfig
+  resolvers: {
+    profile: NuvaProfileResolver | null
+    permission: NuvaPermissionResolver | null
+  }
 }
 
 export const defaultNuvaApiConfig = {
@@ -82,9 +200,38 @@ export const defaultNuvaApiConfig = {
   successCodes: '0',
 } satisfies NuvaApiConfig
 
+export const defaultNuvaPermissionConfig = {
+  source: 'local',
+  forbiddenPath: '/403',
+  permissionMode: 'all',
+  roleMode: 'any',
+  local: {
+    roles: [],
+    permissions: [],
+    scope: {},
+    dataAccess: { type: 'self' },
+    source: 'local',
+  },
+  remote: {
+    profileEndpoint: '',
+    permissionEndpoint: '',
+    profile: '',
+    permission: '',
+    profileResolver: false,
+    permissionResolver: false,
+    cacheMaxAge: 0,
+  },
+  betterAuth: {
+    hasPermission: false,
+    organization: false,
+    dynamicAccessControl: false,
+  },
+} satisfies NuvaPermissionConfig
+
 export const defaultNuvaAuthConfig = {
   enabled: false,
   mode: 'frontend',
+  provider: 'token',
   loginPath: '/login',
   homePath: '/',
   redirectQuery: 'redirect',
@@ -96,6 +243,7 @@ export const defaultNuvaAuthConfig = {
     header: 'Authorization',
     prefix: 'Bearer',
   },
+  permission: defaultNuvaPermissionConfig,
   betterAuth: {
     basePath: '/api/auth',
     serverAuthImport: '~~/server/utils/better-auth',
@@ -106,3 +254,27 @@ export const defaultNuvaPublicConfig = {
   api: defaultNuvaApiConfig,
   auth: defaultNuvaAuthConfig,
 } satisfies NuvaPublicConfig
+
+export function defineNuvaConfig(config: NuvaConfigFile) {
+  return config
+}
+
+export function serializeNuvaRemoteRequest(request?: NuvaRemoteRequestConfig | null) {
+  return request ? JSON.stringify(request) : ''
+}
+
+export function parseNuvaRemoteRequest(request?: string) {
+  if (!request) {
+    return null
+  }
+
+  try {
+    return JSON.parse(request) as NuvaRemoteRequestConfig
+  }
+  catch {
+    return {
+      url: request,
+      method: 'GET',
+    } satisfies NuvaRemoteRequestConfig
+  }
+}

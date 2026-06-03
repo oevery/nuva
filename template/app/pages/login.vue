@@ -7,25 +7,28 @@ definePageMeta({
   auth: false,
 })
 
+const nuva = useNuvaConfig()
+const auth = useAuth()
 const { send: login, loading } = useLogin()
 const { defineField, errors, handleSubmit } = useForm({
   validationSchema: toTypedSchema(loginFormSchema),
   initialValues: {
     username: 'admin',
-    password: 'password',
+    password: 'admin123456',
   },
 })
 
 const [username, usernameProps] = defineField('username')
 const [password, passwordProps] = defineField('password')
 const submitMessage = shallowRef('')
-const { afterLogin } = useAuth()
+const { afterLogin } = auth
 
 const onSubmit = handleSubmit(async (values) => {
   submitMessage.value = ''
 
   try {
     await login(values)
+
     await afterLogin()
   }
   catch (error) {
@@ -44,6 +47,9 @@ const onSubmit = handleSubmit(async (values) => {
         <h1 class="mt-2 text-2xl font-semibold text-white">
           登录
         </h1>
+        <p class="mt-2 text-sm leading-6 text-slate-300">
+          当前使用 frontend demo token 登录。
+        </p>
       </div>
 
       <label class="block text-sm font-medium text-slate-200" for="username">用户名</label>

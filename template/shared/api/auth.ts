@@ -1,3 +1,4 @@
+import type { NuvaAccessScope, NuvaDataAccess, NuvaPermissionSource } from '@oevery/nuva/config'
 import * as v from 'valibot'
 
 export interface CurrentUser {
@@ -5,6 +6,9 @@ export interface CurrentUser {
   name: string
   roles: string[]
   permissions: string[]
+  scope: NuvaAccessScope
+  dataAccess: NuvaDataAccess
+  source: NuvaPermissionSource
 }
 
 export interface LoginResult {

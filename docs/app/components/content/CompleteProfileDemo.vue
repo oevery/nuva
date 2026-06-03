@@ -223,7 +223,9 @@ const currentStep = computed<DemoStep>(() => steps.value.find(step => step.key =
         </div>
       </div>
 
-      <pre class="max-h-[26rem] overflow-auto px-4 py-4 leading-7"><code class="block min-w-max whitespace-pre">{{ currentStep.content }}</code></pre>
+      <div class="max-h-[26rem] overflow-auto px-4 py-4">
+        <CodePreview :code="currentStep.content" language="json" :cache-key="`complete-profile-${currentStep.key}`" />
+      </div>
     </div>
   </div>
 </template>
