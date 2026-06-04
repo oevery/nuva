@@ -2,7 +2,7 @@ import type { ProfileFormOutput } from '#shared/api/profile'
 import type { ApiResponse } from '#shared/api/types'
 import { definePermissionHandler } from '@oevery/nuva/server/utils/permission'
 import * as v from 'valibot'
-import { requireAuth } from '#server/utils/auth'
+import { assertSameOriginRequest, requireAuth } from '#server/utils/auth'
 import { ok } from '#server/utils/response'
 import { profileFormSchema } from '#shared/api/profile'
 
@@ -24,6 +24,8 @@ export default definePermissionHandler({
   auth: requireAuth,
   permission: 'profile:update',
 }, async (event): Promise<ApiResponse<ProfileFormOutput>> => {
+  assertSameOriginRequest(event)
+
   const body = await readBody(event)
   const result = v.safeParse(profileFormSchema, body, {
     abortPipeEarly: true,

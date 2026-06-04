@@ -1,11 +1,14 @@
 import type { LoginResult } from '#shared/api/auth'
 import type { ApiResponse } from '#shared/api/types'
 import * as v from 'valibot'
-import { createDemoToken, demoUser, setAuthCookie, validateDemoCredentials } from '#server/utils/auth'
+import { assertDemoLoginRateLimit, assertSameOriginRequest, clearDemoLoginRateLimit, createDemoToken, demoUser, setAuthCookie, validateDemoCredentials } from '#server/utils/auth'
 import { ok } from '#server/utils/response'
 import { loginFormSchema } from '#shared/api/auth'
 
 export default defineEventHandler(async (event): Promise<ApiResponse<LoginResult>> => {
+  assertSameOriginRequest(event)
+  assertDemoLoginRateLimit(event)
+
   const body = await readBody(event)
   const result = v.safeParse(loginFormSchema, body, {
     abortPipeEarly: true,
@@ -29,6 +32,7 @@ export default defineEventHandler(async (event): Promise<ApiResponse<LoginResult
 
   const token = createDemoToken()
 
+  clearDemoLoginRateLimit(event)
   setAuthCookie(event, token)
 
   return ok({
