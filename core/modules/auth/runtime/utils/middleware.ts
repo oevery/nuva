@@ -81,6 +81,7 @@ export function createAuthMiddleware() {
     }
 
     const tokenAuth = useTokenAuth()
+    const permission = usePermission()
     const { toLogin } = useAuthRedirect()
 
     if (authConfig.provider === 'better-auth') {
@@ -107,7 +108,6 @@ export function createAuthMiddleware() {
       }
     }
 
-    const permission = usePermission()
     const roleMode = accessMeta.roleMode || authConfig.permission.roleMode
     const permissionMode = accessMeta.permissionMode || authConfig.permission.permissionMode
     const forbiddenPath = accessMeta.forbiddenPath || authConfig.permission.forbiddenPath

@@ -69,7 +69,7 @@ const syncAllowed = computed(() => {
   const permissionMode = props.permissionMode || props.mode
   const roleAllowed = props.role ? permission.hasRole(props.role, roleMode) : true
   const scopeAllowed = props.scope ? permission.hasScope(props.scope, permissionMode) : true
-  const permissionAllowed = permissionDecision.value === 'allow'
+  const permissionAllowed = shouldResolveAsync.value || permissionDecision.value === 'allow'
 
   return roleAllowed && scopeAllowed && permissionAllowed
 })

@@ -40,11 +40,12 @@ function isAuthError(error: unknown) {
 export function useTokenAuth<TUser = unknown>() {
   const state = useTokenAuthState<TUser>()
   const resolvers = useNuvaAuthResolvers()
+  const permissionState = usePermissionState()
   const { token, isAuthenticated: hasToken, setToken: setStoredToken, clearToken: clearStoredToken } = useTokenStore()
 
   function clearSessionState() {
-    usePermissionState().value.permission = null
-    usePermissionState().value.loadedAt = 0
+    permissionState.value.permission = null
+    permissionState.value.loadedAt = 0
     setUser(null)
   }
 
@@ -70,16 +71,15 @@ export function useTokenAuth<TUser = unknown>() {
     state.value.checkedAt = user ? Date.now() : 0
   }
 
-  function syncPermissionFromUser(user: TUser | null) {
+  function syncPermissionFromUser(user: TUser | null, authConfig = useNuvaConfig().auth) {
     if (hasPermissionState(user)) {
-      const authConfig = useNuvaConfig().auth
-      usePermissionState().value.permission = resolvePermissionState(user, authConfig.permission.local, authConfig.permission.source)
-      usePermissionState().value.loadedAt = Date.now()
+      permissionState.value.permission = resolvePermissionState(user, authConfig.permission.local, authConfig.permission.source)
+      permissionState.value.loadedAt = Date.now()
       return
     }
 
-    usePermissionState().value.permission = null
-    usePermissionState().value.loadedAt = 0
+    permissionState.value.permission = null
+    permissionState.value.loadedAt = 0
   }
 
   async function refreshUser() {
@@ -94,7 +94,7 @@ export function useTokenAuth<TUser = unknown>() {
     const user = await fetchRemoteUser<TUser>(authConfig, request, resolvers.value.profile as NuvaProfileResolver<TUser> | null)
     setUser(user)
 
-    syncPermissionFromUser(user)
+    syncPermissionFromUser(user, authConfig)
 
     return user
   }

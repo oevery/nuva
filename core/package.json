@@ -28,10 +28,18 @@
     "tsconfig.json"
   ],
   "scripts": {
+    "dev": "pnpm prepare",
+    "build": "pnpm check",
     "check": "pnpm prepare && pnpm typecheck",
     "prepare": "nuxt prepare",
     "prepack": "pnpm check",
     "prepublishOnly": "pnpm check",
+    "test": "pnpm test:unit && pnpm test:e2e",
+    "test:unit": "pnpm prepare && vitest run --project nuxt-runtime",
+    "test:runtime": "pnpm prepare && vitest run tests/runtime",
+    "test:e2e": "pnpm prepare && pnpm exec node ./tests/clean-fixtures.mjs && vitest run --project e2e-node",
+    "test:watch": "pnpm prepare && vitest --project nuxt-runtime",
+    "test:coverage": "pnpm prepare && vitest run --project nuxt-runtime --coverage",
     "typecheck": "nuxt typecheck"
   },
   "publishConfig": {
@@ -53,9 +61,15 @@
     "tailwindcss": "catalog:"
   },
   "devDependencies": {
+    "@nuxt/test-utils": "catalog:",
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "@vue/test-utils": "catalog:",
     "alova": "catalog:",
+    "happy-dom": "catalog:",
+    "msw": "catalog:",
     "nuxt": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

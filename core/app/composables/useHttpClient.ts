@@ -13,6 +13,7 @@ export function createHttpClient(nuvaConfig: NuvaPublicConfig) {
   const { api: apiConfig } = nuvaConfig
   const baseURL = resolveNuxtBaseURL(apiConfig.baseURL)
   const hooks = useHttpRequestHooks(nuvaConfig)
+  const nuxtApp = useNuxtApp()
 
   return createAlova({
     baseURL,
@@ -24,7 +25,7 @@ export function createHttpClient(nuvaConfig: NuvaPublicConfig) {
       onComplete: hooks.onComplete,
     },
     statesHook: NuxtHook({
-      nuxtApp: useNuxtApp,
+      nuxtApp: () => nuxtApp,
     }),
   })
 }

@@ -202,6 +202,10 @@ export default defineNuxtModule<NuvaModuleOptions>({
       api: apiConfig,
       auth: authConfig,
     }, currentPublicConfig, defaultNuvaPublicConfig)
+    publicConfig.auth.publicRoutes = Array.from(new Set([
+      publicConfig.auth.loginPath,
+      ...(publicConfig.auth.publicRoutes || []),
+    ]))
 
     nuxt.options.runtimeConfig.public.nuva = publicConfig
 

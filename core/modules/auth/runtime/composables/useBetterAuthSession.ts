@@ -77,6 +77,11 @@ export function useBetterAuthSession() {
   }
 
   async function refresh() {
+    const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+    const sessionFetch = ((request: Parameters<typeof useFetch>[0], options?: Parameters<typeof useFetch>[1]) => useFetch(request, {
+      ...options,
+      headers: requestHeaders,
+    })) as typeof useFetch
     const betterAuth = useBetterAuth() as {
       useSession?: (fetcher?: typeof useFetch) => unknown
       useActiveOrganization?: (fetcher?: typeof useFetch) => unknown
@@ -92,7 +97,7 @@ export function useBetterAuthSession() {
     }
 
     try {
-      const result = await betterAuth.useSession(useFetch)
+      const result = await betterAuth.useSession(sessionFetch)
       const data = getSessionData(result)
 
       if (!data) {
@@ -100,7 +105,7 @@ export function useBetterAuthSession() {
         return null
       }
 
-      const activeOrganization = betterAuth.useActiveOrganization ? getDataValue(betterAuth.useActiveOrganization(useFetch)) : null
+      const activeOrganization = betterAuth.useActiveOrganization ? getDataValue(betterAuth.useActiveOrganization(sessionFetch)) : null
       const activeMember = getSessionActiveOrganizationId(data) && betterAuth.organization?.getActiveMember
         ? getDataValue(await betterAuth.organization.getActiveMember())
         : null
