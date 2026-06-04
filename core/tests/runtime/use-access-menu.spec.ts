@@ -41,6 +41,7 @@ describe('useAccessMenu', () => {
   beforeEach(() => {
     clearNuxtState()
     cookieState.value = null
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     betterAuthClient.organization.checkRolePermission.mockReset().mockReturnValue(true)
     useRuntimeConfig().public.nuva = {
       ...structuredClone(defaultNuvaPublicConfig),
@@ -172,6 +173,37 @@ describe('useAccessMenu', () => {
     accessMenu.setMenus([{ id: 'missing', title: 'Missing', path: '/missing' }])
 
     expect(accessMenu.menus.value.map(item => item.id)).toEqual(['missing'])
+  })
+
+  it('warns about menus that point to missing routes in development', () => {
+    const accessMenu = useAccessMenu()
+
+    accessMenu.setMenus([{ id: 'missing', title: 'Missing', path: '/missing' }])
+    accessMenu.menus.value
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('points to a route that does not exist'),
+      expect.objectContaining({
+        menu: expect.objectContaining({ id: 'missing' }),
+      }),
+    )
+  })
+
+  it('warns about menu and route permission mismatches in development', () => {
+    const accessMenu = useAccessMenu()
+
+    accessMenu.setMenus([{ id: 'dashboard', title: 'Dashboard', path: '/dashboard', permissions: ['report:read'] }])
+    accessMenu.menus.value
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('permissions do not match route meta permissions'),
+      expect.objectContaining({
+        menu: expect.objectContaining({ id: 'dashboard' }),
+        route: expect.objectContaining({ path: '/dashboard' }),
+        menuAccess: ['report:read'],
+        routeAccess: ['dashboard:view'],
+      }),
+    )
   })
 
   it('can build menus from route meta', () => {
