@@ -24,6 +24,8 @@ const dataAccessType = computed(() => permission.dataAccess.value?.type || 'self
         description="template/ 是业务模板，继承 core/ 全栈 layer，并预置 Nuxt、alova、TailwindCSS 与 Antfu ESLint 配置。"
       />
 
+      <AccessMenuNav />
+
       <section class="grid gap-4 sm:grid-cols-3">
         <article class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <h2 class="text-lg font-semibold text-white">
