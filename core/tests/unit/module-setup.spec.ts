@@ -19,7 +19,9 @@ describe('nuxt module setup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     kit.addServerTemplate.mockReturnValue({ filename: '#nuva-auth/better-auth-handler.mjs' })
-    kit.resolvePath.mockImplementation(async (path: string) => path)
+    kit.resolvePath.mockImplementation(async (path: string) => path.includes('custom-menu-resolver')
+      ? '/fixture/app/nuva/custom-menu-resolver.ts'
+      : path)
   })
 
   it('normalizes nuva runtime auth config without duplicating public routes', async () => {
@@ -36,6 +38,9 @@ describe('nuxt module setup', () => {
     }
 
     await nuvaModule.setup({
+      resolvers: {
+        menu: '~/app/nuva/custom-menu-resolver.ts',
+      },
       auth: {
         preset: 'remote',
         loginPath: '/sign-in',
@@ -48,6 +53,12 @@ describe('nuxt module setup', () => {
           },
           betterAuth: {
             hasPermission: true,
+          },
+        },
+        accessMenu: {
+          provider: 'endpoint',
+          remote: {
+            menuEndpoint: '/api/menus',
           },
         },
       },
@@ -64,10 +75,16 @@ describe('nuxt module setup', () => {
     expect(auth.permission.provider).toBe('endpoint')
     expect(auth.permission.remote.profile).toBe('')
     expect(auth.permission.remote.permission).toContain('/api/permission')
+    expect(auth.accessMenu.provider).toBe('endpoint')
+    expect(auth.accessMenu.remote.menu).toContain('/api/menus')
     expect(auth.permission.betterAuth.organization).toBe(true)
     expect(kit.addPluginTemplate).toHaveBeenCalledWith(expect.objectContaining({
       filename: 'nuva/resolvers.plugin.mjs',
     }))
+    const resolverTemplate = kit.addPluginTemplate.mock.calls[0]?.[0]
+    expect(resolverTemplate.getContents()).toContain('menuResolver')
+    expect(resolverTemplate.getContents()).toContain('menu: menuResolver')
+    expect(resolverTemplate.getContents()).not.toContain('accessMenu: menuResolver')
     expect(kit.addImports).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({ name: 'useNuvaConfig' }),
     ]))
@@ -98,6 +115,7 @@ describe('nuxt module setup', () => {
       expect.objectContaining({ name: 'useAuth' }),
       expect.objectContaining({ name: 'useBetterAuth' }),
       expect.objectContaining({ name: 'usePermission' }),
+      expect.objectContaining({ name: 'useAccessMenu' }),
       expect.objectContaining({ name: 'useBetterAuthSession' }),
     ]))
     expect(kit.addRouteMiddleware).toHaveBeenCalledWith({

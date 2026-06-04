@@ -1,4 +1,4 @@
-import type { NuvaPermissionResolver, NuvaPermissionState, NuvaProfileResolver, NuvaRemoteRequestConfig, NuvaRemoteRequestMethod, NuvaRemoteResolverContext, NuvaResolvedAuthConfig } from '../../../../config'
+import type { NuvaAccessMenuItem, NuvaAccessMenuResolver, NuvaPermissionResolver, NuvaPermissionState, NuvaProfileResolver, NuvaRemoteRequestConfig, NuvaRemoteRequestMethod, NuvaRemoteResolverContext, NuvaResolvedAuthConfig } from '../../../../config'
 import { handleHttpResponse } from '../../../../app/utils/http/response'
 import { resolvePermissionState } from './permission'
 
@@ -131,6 +131,14 @@ export async function fetchRemotePermission(config: NuvaResolvedAuthConfig, requ
   }
 
   return executeRemoteRequest<NuvaPermissionState>(config, request)
+}
+
+export async function fetchRemoteAccessMenu(config: NuvaResolvedAuthConfig, request: NuvaRemoteRequestConfig | null, resolver: NuvaAccessMenuResolver | null) {
+  if (resolver) {
+    return resolver(await createResolverContext(config, request))
+  }
+
+  return executeRemoteRequest<NuvaAccessMenuItem[]>(config, request)
 }
 
 export function toPermissionState(value: NuvaPermissionState | null | undefined, config: NuvaResolvedAuthConfig) {

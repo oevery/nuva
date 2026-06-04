@@ -18,6 +18,13 @@ export function useNuvaConfig() {
           permission: parseNuvaRemoteRequest(config.auth.permission.remote.permission),
         },
       },
+      accessMenu: {
+        ...config.auth.accessMenu,
+        remote: {
+          ...config.auth.accessMenu.remote,
+          menu: parseNuvaRemoteRequest(config.auth.accessMenu.remote.menu),
+        },
+      },
     },
     resolvers: resolvers.value,
   } as NuvaResolvedConfig

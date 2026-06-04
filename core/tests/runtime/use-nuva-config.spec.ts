@@ -15,12 +15,20 @@ describe('useNuvaConfig', () => {
             permission: '/api/permission',
           },
         },
+        accessMenu: {
+          ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
+          remote: {
+            ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu.remote),
+            menu: '/api/menus',
+          },
+        },
       },
     }
 
     const resolvers = useState('nuva:auth:resolvers', () => ({
       profile: vi.fn(),
       permission: vi.fn(),
+      menu: vi.fn(),
     }))
     const config = useNuvaConfig()
 
@@ -30,6 +38,10 @@ describe('useNuvaConfig', () => {
     })
     expect(config.auth.permission.remote.permission).toEqual({
       url: '/api/permission',
+      method: 'GET',
+    })
+    expect(config.auth.accessMenu.remote.menu).toEqual({
+      url: '/api/menus',
       method: 'GET',
     })
     expect(config.resolvers).toBe(resolvers.value)

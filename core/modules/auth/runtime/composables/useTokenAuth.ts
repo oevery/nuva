@@ -1,7 +1,9 @@
 import type { NuvaProfileResolver } from '../../../../config'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
+import { hasAccessMenus, normalizeAccessMenus } from '../utils/access-menu'
 import { hasPermissionState, resolvePermissionState } from '../utils/permission'
 import { fetchRemoteUser } from '../utils/remote'
+import { useAccessMenuState } from './useAccessMenuState'
 import { useNuvaAuthResolvers } from './useNuvaAuthResolvers'
 import { usePermissionState } from './usePermissionState'
 import { useTokenStore } from './useTokenStore'
@@ -40,10 +42,13 @@ function isAuthError(error: unknown) {
 export function useTokenAuth<TUser = unknown>() {
   const state = useTokenAuthState<TUser>()
   const resolvers = useNuvaAuthResolvers()
+  const accessMenuState = useAccessMenuState()
   const permissionState = usePermissionState()
   const { token, isAuthenticated: hasToken, setToken: setStoredToken, clearToken: clearStoredToken } = useTokenStore()
 
   function clearSessionState() {
+    accessMenuState.value.menus = []
+    accessMenuState.value.loadedAt = 0
     permissionState.value.permission = null
     permissionState.value.loadedAt = 0
     setUser(null)
@@ -82,6 +87,21 @@ export function useTokenAuth<TUser = unknown>() {
     permissionState.value.loadedAt = 0
   }
 
+  function syncAccessMenuFromUser(user: TUser | null, authConfig = useNuvaConfig().auth) {
+    if (authConfig.accessMenu.provider !== 'profile') {
+      return
+    }
+
+    if (hasAccessMenus(user)) {
+      accessMenuState.value.menus = normalizeAccessMenus(user)
+      accessMenuState.value.loadedAt = Date.now()
+      return
+    }
+
+    accessMenuState.value.menus = []
+    accessMenuState.value.loadedAt = 0
+  }
+
   async function refreshUser() {
     const authConfig = useNuvaConfig().auth
     const request = authConfig.permission.remote.profile
@@ -95,6 +115,7 @@ export function useTokenAuth<TUser = unknown>() {
     setUser(user)
 
     syncPermissionFromUser(user, authConfig)
+    syncAccessMenuFromUser(user, authConfig)
 
     return user
   }
@@ -134,7 +155,9 @@ export function useTokenAuth<TUser = unknown>() {
 
     if (user !== undefined) {
       setUser(user)
-      syncPermissionFromUser(user)
+      const authConfig = useNuvaConfig().auth
+      syncPermissionFromUser(user, authConfig)
+      syncAccessMenuFromUser(user, authConfig)
     }
   }
 

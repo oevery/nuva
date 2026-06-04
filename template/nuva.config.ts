@@ -21,5 +21,13 @@ export default defineNuvaConfig({
         cacheMaxAge: 0,
       },
     },
+    accessMenu: {
+      provider: 'endpoint',
+      remote: {
+        menu: {
+          url: '/demo-auth/menus',
+        },
+      },
+    },
   },
 })

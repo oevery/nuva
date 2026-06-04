@@ -1,5 +1,5 @@
 import { defaultNuvaAuthConfig } from '../../config'
-import { fetchRemotePermission, fetchRemoteUser, toPermissionState } from '../../modules/auth/runtime/utils/remote'
+import { fetchRemoteAccessMenu, fetchRemotePermission, fetchRemoteUser, toPermissionState } from '../../modules/auth/runtime/utils/remote'
 
 const httpClient = vi.hoisted(() => ({
   Get: vi.fn(),
@@ -59,6 +59,17 @@ describe('remote auth utils', () => {
       headers: undefined,
       meta: undefined,
     })
+  })
+
+  it('fetches remote access menus through resolver', async () => {
+    const resolver = vi.fn(async () => [{ id: 'dashboard', title: 'Dashboard', path: '/dashboard' }])
+
+    await expect(fetchRemoteAccessMenu(defaultNuvaAuthConfig as any, { url: '/api/menus' }, resolver)).resolves.toEqual([
+      { id: 'dashboard', title: 'Dashboard', path: '/dashboard' },
+    ])
+    expect(resolver).toHaveBeenCalledWith(expect.objectContaining({
+      request: { url: '/api/menus' },
+    }))
   })
 
   it('throws for missing remote request and normalizes permission payloads', async () => {

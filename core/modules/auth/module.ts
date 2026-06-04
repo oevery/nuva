@@ -42,6 +42,10 @@ export default defineNuxtModule<NuvaAuthModuleOptions>({
         from: resolver.resolve('./runtime/composables/usePermission'),
       },
       {
+        name: 'useAccessMenu',
+        from: resolver.resolve('./runtime/composables/useAccessMenu'),
+      },
+      {
         name: 'useNuvaAuthResolvers',
         from: resolver.resolve('./runtime/composables/useNuvaAuthResolvers'),
       },

@@ -17,6 +17,13 @@ export function getNuvaConfig(event: H3Event) {
           permission: parseNuvaRemoteRequest(config.auth.permission.remote.permission),
         },
       },
+      accessMenu: {
+        ...config.auth.accessMenu,
+        remote: {
+          ...config.auth.accessMenu.remote,
+          menu: parseNuvaRemoteRequest(config.auth.accessMenu.remote.menu),
+        },
+      },
     },
   } as Omit<NuvaResolvedConfig, 'resolvers'>
 }
