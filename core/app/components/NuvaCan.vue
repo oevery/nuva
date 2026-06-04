@@ -10,18 +10,20 @@ interface NuvaCanProps {
   roleMode?: NuvaPermissionMatchMode
   permissionMode?: NuvaPermissionMatchMode
   resolve?: 'auto' | 'sync' | 'async'
+  pendingBehavior?: 'hide' | 'fallback'
   invert?: boolean
 }
 
 const props = withDefaults(defineProps<NuvaCanProps>(), {
   mode: 'all',
   resolve: 'auto',
+  pendingBehavior: 'hide',
   invert: false,
 })
 
 const permission = useNuvaPermission()
-const pending = ref(false)
-const asyncPermissionAllowed = ref(true)
+const pending = shallowRef(false)
+const asyncPermissionAllowed = shallowRef(true)
 let requestId = 0
 
 function getPermissionDecision(permissionInput: string | string[], mode: NuvaPermissionMatchMode) {
@@ -85,6 +87,9 @@ const allowed = computed(() => {
   return props.invert ? !result : result
 })
 
+const shouldRenderPending = computed(() => pending.value && props.pendingBehavior !== 'fallback')
+const shouldRenderFallback = computed(() => !allowed.value && (!pending.value || props.pendingBehavior === 'fallback'))
+
 watch(
   () => [props.permission, props.permissionMode, props.mode, props.resolve, permissionDecision.value] as const,
   async (_, __, onCleanup) => {
@@ -126,5 +131,6 @@ watch(
 
 <template>
   <slot v-if="allowed" :allowed="allowed" :pending="pending" :unknown="unknown" />
-  <slot v-else name="fallback" :allowed="allowed" :pending="pending" :unknown="unknown" />
+  <slot v-else-if="shouldRenderPending" name="pending" :allowed="allowed" :pending="pending" :unknown="unknown" />
+  <slot v-else-if="shouldRenderFallback" name="fallback" :allowed="allowed" :pending="pending" :unknown="unknown" />
 </template>

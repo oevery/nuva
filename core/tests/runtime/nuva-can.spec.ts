@@ -83,10 +83,60 @@ describe('nuva can', () => {
       },
     })
 
-    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="allowed"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
     await flushPromises()
 
     expect(permission.canAsync).toHaveBeenCalledWith('dashboard:view')
+    expect(wrapper.find('[data-test="allowed"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
+  })
+
+  it('renders pending slot while resolving unknown permissions', async () => {
+    permission.canState.mockReturnValue('unknown')
+    permission.canAsync.mockResolvedValue(false)
+
+    const wrapper = mount(NuvaCan, {
+      props: {
+        permission: 'dashboard:view',
+      },
+      slots: {
+        default: '<span data-test="allowed">Allowed</span>',
+        pending: '<span data-test="pending">Checking</span>',
+        fallback: '<span data-test="fallback">Denied</span>',
+      },
+    })
+
+    expect(wrapper.find('[data-test="pending"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
+
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="pending"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(true)
+  })
+
+  it('can render fallback during pending checks for backwards-compatible UX', async () => {
+    permission.canState.mockReturnValue('unknown')
+    permission.canAsync.mockResolvedValue(true)
+
+    const wrapper = mount(NuvaCan, {
+      props: {
+        permission: 'dashboard:view',
+        pendingBehavior: 'fallback',
+      },
+      slots: {
+        default: '<span data-test="allowed">Allowed</span>',
+        pending: '<span data-test="pending">Checking</span>',
+        fallback: '<span data-test="fallback">Denied</span>',
+      },
+    })
+
+    expect(wrapper.find('[data-test="pending"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(true)
+
+    await flushPromises()
+
     expect(wrapper.find('[data-test="allowed"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
   })
