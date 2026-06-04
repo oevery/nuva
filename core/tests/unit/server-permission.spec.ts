@@ -1,5 +1,5 @@
 import { defaultNuvaPublicConfig } from '../../config'
-import { getNuvaPermissionState, requireNuvaDataAccess, requireNuvaDataAccessType, requireNuvaPermission, requireNuvaRole, requireNuvaScope, setNuvaAuthContext } from '../../server/utils/permission'
+import { definePermissionHandler, defineProtectedHandler, getNuvaPermissionState, requireNuvaDataAccess, requireNuvaDataAccessType, requireNuvaPermission, requireNuvaRole, requireNuvaScope, setNuvaAuthContext } from '../../server/utils/permission'
 
 const runtimeConfig = {
   public: {
@@ -76,5 +76,40 @@ describe('server permission guards', () => {
     expect(requireNuvaDataAccessType(event, ['organization', 'tenant'])).toBeTruthy()
     expect(requireNuvaDataAccess(event, { organizationId: 'org-1' })).toBeTruthy()
     expect(() => requireNuvaDataAccess(event, { organizationId: 'org-2' })).toThrowError(/Missing required data access/)
+  })
+
+  it('defines protected event handlers with auth context and declarative guards', async () => {
+    const event = createTestEvent()
+    const handler = defineProtectedHandler({
+      auth: () => ({
+        roles: ['admin'],
+        permissions: ['dashboard:view'],
+        scope: { organizationId: 'org-1' },
+      }),
+      roles: ['admin'],
+      permissions: ['dashboard:view'],
+      scopes: ['organizationId'],
+    }, (_event, auth, permission) => ({
+      roles: auth.roles,
+      permissions: permission.permissions,
+    }))
+
+    await expect(handler(event)).resolves.toEqual({
+      roles: ['admin'],
+      permissions: ['dashboard:view'],
+    })
+    expect(getNuvaPermissionState(event).permissions).toEqual(['dashboard:view'])
+  })
+
+  it('defines permission event handlers that reject missing permissions', async () => {
+    const handler = definePermissionHandler({
+      auth: () => ({
+        roles: ['viewer'],
+        permissions: ['dashboard:view'],
+      }),
+      permission: 'dashboard:update',
+    }, () => ({ ok: true }))
+
+    await expect(handler(createTestEvent())).rejects.toMatchObject({ statusCode: 403 })
   })
 })

@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import type { NuvaAccessScope, NuvaPermissionMatchMode, NuvaPermissionState, NuvaResolvedAuthConfig } from '../../config'
 import type { PermissionInput, PermissionLikeUser } from '../../modules/auth/runtime/utils/permission'
-import { createError } from 'h3'
+import { createError, defineEventHandler } from 'h3'
 import { hasScope, matchList, resolvePermissionState } from '../../modules/auth/runtime/utils/permission'
 import { getNuvaConfig } from './config'
 
@@ -14,11 +14,33 @@ interface NuvaPermissionGuardOptions {
   allowLocalFallback?: boolean
 }
 
+type MaybePromise<T> = T | Promise<T>
 type NuvaPermissionGuardInput = NuvaPermissionMatchMode | NuvaPermissionGuardOptions | undefined
 type NuvaDataAccessType = NonNullable<NuvaPermissionState['dataAccess']>['type']
 type NuvaDataAccessTarget = NuvaAccessScope & {
   ownerId?: string | number
 }
+
+interface NuvaAccessGuardOptions {
+  role?: PermissionInput
+  roles?: PermissionInput
+  permission?: PermissionInput
+  permissions?: PermissionInput
+  scope?: PermissionInput
+  scopes?: PermissionInput
+  roleMode?: NuvaPermissionMatchMode
+  permissionMode?: NuvaPermissionMatchMode
+}
+
+export interface NuvaProtectedEventHandlerOptions<TAuth extends PermissionLikeUser = PermissionLikeUser> extends NuvaAccessGuardOptions {
+  auth: (event: H3Event) => MaybePromise<TAuth | null | undefined>
+}
+
+export interface NuvaPermissionEventHandlerOptions<TAuth extends PermissionLikeUser = PermissionLikeUser> extends Omit<NuvaProtectedEventHandlerOptions<TAuth>, 'permission' | 'permissions'> {
+  permission: PermissionInput
+}
+
+export type NuvaProtectedEventHandler<TAuth extends PermissionLikeUser = PermissionLikeUser, TResult = unknown> = (event: H3Event, auth: TAuth, permission: NuvaPermissionState) => MaybePromise<TResult>
 
 function getNuvaServerAuthContext(event: H3Event) {
   const context = event.context as H3Event['context'] & {
@@ -64,6 +86,24 @@ function matchesValue(allowed: unknown, target: unknown) {
 
 function resolveScopedAccessValue(scopeValue: unknown, accessValues: unknown) {
   return toComparableValues(scopeValue).length ? scopeValue : accessValues
+}
+
+function requireNuvaAccess(event: H3Event, options: NuvaAccessGuardOptions) {
+  const role = options.roles ?? options.role
+  const permission = options.permissions ?? options.permission
+  const scope = options.scopes ?? options.scope
+
+  if (role) {
+    requireNuvaRole(event, role, options.roleMode)
+  }
+
+  if (scope) {
+    requireNuvaScope(event, scope, options.permissionMode)
+  }
+
+  if (permission) {
+    requireNuvaPermission(event, permission, options.permissionMode)
+  }
 }
 
 export function setNuvaAuthContext(event: H3Event, permission: NuvaPermissionState | PermissionLikeUser | null | undefined) {
@@ -173,4 +213,35 @@ export function requireNuvaDataAccess(event: H3Event, target: NuvaDataAccessTarg
   }
 
   throw createForbiddenError('Missing required data access')
+}
+
+export function defineProtectedHandler<TAuth extends PermissionLikeUser = PermissionLikeUser, TResult = unknown>(
+  options: NuvaProtectedEventHandlerOptions<TAuth>,
+  handler: NuvaProtectedEventHandler<TAuth, TResult>,
+) {
+  return defineEventHandler(async (event) => {
+    const auth = await options.auth(event)
+
+    if (!auth) {
+      throw createUnauthorizedError()
+    }
+
+    const permission = setNuvaAuthContext(event, auth)
+    requireNuvaAccess(event, options)
+
+    return handler(event, auth, permission)
+  })
+}
+
+export function definePermissionHandler<TAuth extends PermissionLikeUser = PermissionLikeUser, TResult = unknown>(
+  options: NuvaPermissionEventHandlerOptions<TAuth>,
+  handler: NuvaProtectedEventHandler<TAuth, TResult>,
+) {
+  return defineProtectedHandler(
+    {
+      ...options,
+      permissions: options.permission,
+    },
+    handler,
+  )
 }
