@@ -8,9 +8,14 @@ export function useProfileApi() {
     get: () => http.Get<Profile>('/profile', {
       meta: {
         ignoreToken: true,
+        forbiddenBehavior: 'redirect',
       },
     }),
-    update: (data: ProfileFormInput) => http.Patch<ProfileFormOutput>('/profile', data),
+    update: (data: ProfileFormInput) => http.Patch<ProfileFormOutput>('/profile', data, {
+      meta: {
+        errorMessage: '你没有编辑资料的权限',
+      },
+    }),
   }
 }
 
