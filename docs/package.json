@@ -5,7 +5,7 @@
   "private": true,
   "description": "Official Nuva documentation site.",
   "scripts": {
-    "dev": "nuxt dev",
+    "dev": "TMPDIR=/tmp nuxt dev",
     "build": "nuxt build",
     "generate": "nuxt generate",
     "lint": "eslint .",
