@@ -112,4 +112,30 @@ describe('server permission guards', () => {
 
     await expect(handler(createTestEvent())).rejects.toMatchObject({ statusCode: 403 })
   })
+
+  it('defines protected event handlers that reject missing roles and scopes', async () => {
+    const auth = () => ({
+      roles: ['viewer'],
+      permissions: ['dashboard:view'],
+      scope: { organizationId: 'org-1' },
+    })
+
+    const roleHandler = defineProtectedHandler({
+      auth,
+      roles: ['admin'],
+    }, () => ({ ok: true }))
+    const scopeHandler = defineProtectedHandler({
+      auth,
+      scopes: ['tenantId'],
+    }, () => ({ ok: true }))
+
+    await expect(roleHandler(createTestEvent())).rejects.toMatchObject({
+      statusCode: 403,
+      message: 'Missing required role',
+    })
+    await expect(scopeHandler(createTestEvent())).rejects.toMatchObject({
+      statusCode: 403,
+      message: 'Missing required scope',
+    })
+  })
 })

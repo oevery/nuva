@@ -14,8 +14,17 @@ const routes = vi.hoisted(() => ([
 ]))
 
 const cookieState = ref<string | null>(null)
+const betterAuthClient = vi.hoisted(() => ({
+  organization: {
+    checkRolePermission: vi.fn(),
+  },
+}))
 
 mockNuxtImport('useCookie', () => () => cookieState)
+
+vi.mock('../../modules/auth/runtime/composables/useBetterAuth', () => ({
+  useBetterAuth: () => betterAuthClient,
+}))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -32,6 +41,7 @@ describe('useAccessMenu', () => {
   beforeEach(() => {
     clearNuxtState()
     cookieState.value = null
+    betterAuthClient.organization.checkRolePermission.mockReset().mockReturnValue(true)
     useRuntimeConfig().public.nuva = {
       ...structuredClone(defaultNuvaPublicConfig),
       auth: {
@@ -172,5 +182,50 @@ describe('useAccessMenu', () => {
     expect(accessMenu.menus.value).toEqual([
       expect.objectContaining({ id: 'settings', title: 'Settings', path: '/settings' }),
     ])
+  })
+
+  it('filters menus with better-auth dynamic permissions and active member role', () => {
+    useRuntimeConfig().public.nuva.auth = {
+      ...structuredClone(defaultNuvaPublicConfig.auth),
+      provider: 'better-auth',
+      accessMenu: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
+        provider: 'profile',
+      },
+      permission: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.permission),
+        source: 'better-auth',
+        betterAuth: {
+          hasPermission: true,
+          organization: true,
+          dynamicAccessControl: false,
+        },
+      },
+    }
+    useState('nuva:better-auth-session', () => ({
+      data: null,
+      activeOrganization: null,
+      activeMember: null,
+      ready: false,
+    })).value = {
+      data: { user: { id: 'user-1' } },
+      activeOrganization: { id: 'org-1', slug: 'acme' },
+      activeMember: { role: 'viewer' },
+      ready: true,
+    }
+    betterAuthClient.organization.checkRolePermission.mockImplementation(({ permissions }) => !!permissions.dashboard?.includes('view'))
+
+    const accessMenu = useAccessMenu()
+    accessMenu.setMenus([
+      { id: 'dashboard', title: 'Dashboard', path: '/dashboard', permissions: ['dashboard:view'] },
+      { id: 'reports', title: 'Reports', path: '/reports', permissions: ['report:read'] },
+      { id: 'users', title: 'Users', path: '/users' },
+    ])
+
+    expect(accessMenu.menus.value.map(item => item.id)).toEqual(['dashboard'])
+    expect(betterAuthClient.organization.checkRolePermission).toHaveBeenCalledWith({
+      role: 'viewer',
+      permissions: { dashboard: ['view'] },
+    })
   })
 })
