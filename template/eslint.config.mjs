@@ -13,4 +13,9 @@ export default antfu({
     '**/.output/**',
     '**/dist/**',
   ],
+}, {
+  files: ['package.json'],
+  rules: {
+    'pnpm/json-enforce-catalog': 'off',
+  },
 })

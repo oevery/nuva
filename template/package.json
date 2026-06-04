@@ -3,7 +3,6 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@11.5.0",
   "description": "Business application template for Nuva.",
   "scripts": {
     "dev": "nuxt dev",
@@ -21,15 +20,15 @@
     "@vee-validate/nuxt": "^4.15.1",
     "@vee-validate/valibot": "^4.15.1",
     "alova": "^3.5.1",
-    "better-auth": "^1.6.0",
-    "nuxt": "^4.4.6",
+    "better-auth": "^1.6.14",
+    "nuxt": "^4.4.7",
     "valibot": "^1.4.1"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
     "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^25.9.1",
-    "eslint": "^10.4.0",
+    "eslint": "^10.4.1",
     "eslint-plugin-format": "^2.0.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3"
