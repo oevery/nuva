@@ -1,10 +1,12 @@
-import type { NuvaPermissionCheckContext, NuvaPermissionDecision, NuvaPermissionMatchMode, NuvaPermissionState } from '../../../config'
+import type { NuvaPermissionCheckContext, NuvaPermissionDecision, NuvaPermissionMatchMode } from '../../../config'
 import type { NuvaAuthAdapterCore } from '../../auth/runtime/adapters/registry'
 import { defineAuthAdapter, registerAuthAdapter } from '../../auth/runtime/adapters/registry'
 import { matchList, toBetterAuthPermissions } from '../../auth/runtime/utils/permission'
+import { createEmptyPermissionState } from '../../auth/runtime/utils/permission-state'
 import { useNuvaConfig } from '../../nuva/runtime/composables/useNuvaConfig'
 import { useBetterAuthClient } from './composables/useBetterAuthClient'
 import { useBetterAuthSession } from './internal/useBetterAuthSession'
+import { createBetterAuthPermissionState } from './utils/permission-state'
 
 interface BetterAuthOrganizationClient {
   hasPermission?: (payload: { permissions: Record<string, string[]>, context?: NuvaPermissionCheckContext }) => Promise<{ data?: boolean } | boolean>
@@ -25,40 +27,6 @@ function resolveBetterAuthPermissionResult(result: { data?: boolean } | boolean)
 
 function toDecision(allowed: boolean): NuvaPermissionDecision {
   return allowed ? 'allow' : 'deny'
-}
-
-function toRoleList(value: unknown) {
-  if (Array.isArray(value)) {
-    return value.map(String).filter(Boolean)
-  }
-
-  return typeof value === 'string' && value ? [value] : []
-}
-
-function createBetterAuthPermissionState(session: ReturnType<typeof useBetterAuthSession>): NuvaPermissionState {
-  const activeMember = session.activeMember.value as { role?: string | string[] } | null
-  const activeOrganization = session.activeOrganization.value as { id?: string, slug?: string } | null
-
-  return {
-    roles: toRoleList(activeMember?.role),
-    permissions: [],
-    scope: {
-      organizationId: activeOrganization?.id,
-      organizationSlug: activeOrganization?.slug,
-    },
-    dataAccess: { type: 'self' },
-    source: 'adapter',
-  }
-}
-
-function createEmptyPermissionState(): NuvaPermissionState {
-  return {
-    roles: [],
-    permissions: [],
-    scope: {},
-    dataAccess: { type: 'self' },
-    source: 'adapter',
-  }
 }
 
 function getOrganization() {
@@ -125,7 +93,13 @@ export const createBetterAuthAdapter = defineAuthAdapter(<TUser = unknown>(): Nu
   const permission = {
     authReady: session.ready,
     loaded: session.ready,
-    state: computed(() => session.ready.value ? createBetterAuthPermissionState(session) : createEmptyPermissionState()),
+    state: computed(() => session.ready.value
+      ? createBetterAuthPermissionState({
+          session: session.data.value,
+          activeOrganization: session.activeOrganization.value,
+          activeMember: session.activeMember.value,
+        })
+      : createEmptyPermissionState('adapter')),
     async refresh() {
       clearBetterAuthPermissionCache()
       await session.refresh()

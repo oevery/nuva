@@ -1,29 +1,7 @@
-import type { NuvaAuthConfig, NuvaAuthModuleOptions, NuvaPermissionConfig, NuvaPermissionProvider, NuvaPermissionSource, NuvaPublicConfig } from '../../config'
+import type { NuvaAuthConfig, NuvaAuthModuleOptions, NuvaPublicConfig } from '../../config'
 import { addImports, addRouteMiddleware, createResolver, defineNuxtModule, installModule } from '@nuxt/kit'
 import { defu } from 'defu'
 import { defaultNuvaAuthConfig, defaultNuvaPublicConfig } from '../../config'
-
-function resolvePermissionSource(provider?: NuvaPermissionProvider): NuvaPermissionSource | undefined {
-  if (!provider) {
-    return
-  }
-
-  if (provider === 'profile' || provider === 'endpoint' || provider === 'remote') {
-    return 'remote'
-  }
-
-  return provider
-}
-
-function resolvePermissionProvider(source: NuvaPermissionSource): NuvaPermissionProvider {
-  return source === 'remote' ? 'profile' : source
-}
-
-function normalizePermissionConfig(permission: NuvaPermissionConfig) {
-  const source = resolvePermissionSource(permission.provider) || permission.source
-  permission.source = source
-  permission.provider = permission.provider || resolvePermissionProvider(source)
-}
 
 export default defineNuxtModule<NuvaAuthModuleOptions>({
   meta: {
@@ -41,7 +19,6 @@ export default defineNuxtModule<NuvaAuthModuleOptions>({
     })
     const currentPublicConfig = (nuxt.options.runtimeConfig.public.nuva || {}) as Partial<NuvaPublicConfig>
     const authConfig = defu({ enabled: true }, runtimeAuthOptions, currentPublicConfig.auth || {}, defaultNuvaAuthConfig) as NuvaAuthConfig
-    normalizePermissionConfig(authConfig.permission)
     authConfig.publicRoutes = Array.from(new Set([
       authConfig.loginPath,
       ...(authConfig.publicRoutes || []),

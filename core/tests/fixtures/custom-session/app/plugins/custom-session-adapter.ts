@@ -1,5 +1,6 @@
 import type { NuvaPermissionDecision, NuvaPermissionState } from '../../../../../config'
 import { defineAuthAdapter, registerAuthAdapter } from '../../../../../modules/auth/runtime/adapters/registry'
+import { createEmptyPermissionState } from '../../../../../modules/auth/runtime/utils/permission-state'
 
 interface CustomSessionUser {
   id: string
@@ -21,16 +22,6 @@ function createPermissionState(): NuvaPermissionState {
   }
 }
 
-function createEmptyPermissionState(): NuvaPermissionState {
-  return {
-    roles: [],
-    permissions: [],
-    scope: {},
-    dataAccess: { type: 'self' },
-    source: 'adapter',
-  }
-}
-
 function toDecision(allowed: boolean): NuvaPermissionDecision {
   return allowed ? 'allow' : 'deny'
 }
@@ -43,7 +34,7 @@ export default defineNuxtPlugin(() => {
     const user = computed(() => userState.value)
     const ready = computed(() => readyState.value)
     const isAuthenticated = computed(() => !!userState.value)
-    const permissionState = computed(() => userState.value ? createPermissionState() : createEmptyPermissionState())
+    const permissionState = computed(() => userState.value ? createPermissionState() : createEmptyPermissionState('adapter'))
 
     async function ensureAuthenticated() {
       const authenticated = session.value === 'valid'

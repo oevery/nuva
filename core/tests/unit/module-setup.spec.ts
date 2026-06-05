@@ -55,16 +55,19 @@ describe('nuxt module setup', () => {
         loginPath: '/sign-in',
         publicRoutes: ['/sign-in', '/public', '/public'],
         permission: {
-          provider: 'endpoint',
+          source: 'remote',
           remote: {
-            profileEndpoint: '/api/profile',
-            permissionEndpoint: '/api/permission',
+            permission: {
+              url: '/api/permission',
+            },
           },
         },
         accessMenu: {
-          provider: 'endpoint',
+          source: 'remote',
           remote: {
-            menuEndpoint: '/api/menus',
+            menu: {
+              url: '/api/menus',
+            },
           },
         },
       },
@@ -78,10 +81,9 @@ describe('nuxt module setup', () => {
     expect(auth.publicRoutes).toContain('/public')
     expect(new Set(auth.publicRoutes).size).toBe(auth.publicRoutes.length)
     expect(auth.permission.source).toBe('remote')
-    expect(auth.permission.provider).toBe('endpoint')
     expect(auth.permission.remote.profile).toBe('')
     expect(auth.permission.remote.permission).toContain('/api/permission')
-    expect(auth.accessMenu.provider).toBe('endpoint')
+    expect(auth.accessMenu.source).toBe('remote')
     expect(auth.accessMenu.remote.menu).toContain('/api/menus')
     expect(kit.addPluginTemplate).toHaveBeenCalledWith(expect.objectContaining({
       filename: 'nuva/resolvers.plugin.mjs',
@@ -124,7 +126,6 @@ describe('nuxt module setup', () => {
     expect(auth.enabled).toBe(false)
     expect(auth.provider).toBe('better-auth')
     expect(auth.permission.source).toBe('adapter')
-    expect(auth.permission.provider).toBe('adapter')
     expect(auth.betterAuth.organization.enabled).toBe(true)
     expect(auth.betterAuth.organization.hasPermission).toBe(true)
   })
@@ -152,7 +153,6 @@ describe('nuxt module setup', () => {
 
     expect(auth.provider).toBe('better-auth')
     expect(auth.permission.source).toBe('local')
-    expect(auth.permission.provider).toBe('local')
     expect(auth.betterAuth.organization.enabled).toBe(false)
   })
 
@@ -173,7 +173,7 @@ describe('nuxt module setup', () => {
       auth: {
         provider: 'custom-session',
         permission: {
-          provider: 'adapter',
+          source: 'adapter',
         },
       },
     }, nuxt)
@@ -182,36 +182,6 @@ describe('nuxt module setup', () => {
 
     expect(auth.provider).toBe('custom-session')
     expect(auth.permission.source).toBe('adapter')
-    expect(auth.permission.provider).toBe('adapter')
-  })
-
-  it('rejects removed legacy permission.betterAuth options', async () => {
-    const nuvaModule = (await import('../../modules/nuva/module')).default as any
-    const nuxt = {
-      options: {
-        rootDir: '/fixture',
-        runtimeConfig: {
-          public: {
-            nuva: {},
-          },
-        },
-      },
-    }
-
-    await expect(nuvaModule.setup({
-      auth: {
-        provider: 'token',
-        permission: {
-          provider: 'endpoint',
-          remote: {
-            permissionEndpoint: '/api/permission',
-          },
-          betterAuth: {
-            hasPermission: true,
-          },
-        },
-      },
-    }, nuxt)).rejects.toThrow('auth.permission.betterAuth has been removed')
   })
 
   it('rejects demo auth endpoints in production', async () => {
@@ -236,9 +206,11 @@ describe('nuxt module setup', () => {
           enabled: true,
           provider: 'token',
           permission: {
-            provider: 'profile',
+            source: 'remote',
             remote: {
-              profileEndpoint: '/demo-auth/me',
+              profile: {
+                url: '/demo-auth/me',
+              },
             },
           },
         },
@@ -318,7 +290,7 @@ describe('nuxt module setup', () => {
       provider: 'custom-session',
       global: true,
       permission: {
-        provider: 'adapter',
+        source: 'adapter',
       },
     }, nuxt)
 
@@ -327,7 +299,6 @@ describe('nuxt module setup', () => {
     expect(auth.enabled).toBe(true)
     expect(auth.provider).toBe('custom-session')
     expect(auth.global).toBe(true)
-    expect(auth.permission.provider).toBe('adapter')
     expect(auth.permission.source).toBe('adapter')
   })
 

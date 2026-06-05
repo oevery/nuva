@@ -5,7 +5,9 @@ import { useNuvaAuthResolvers } from '../internal/useNuvaAuthResolvers'
 import { usePermissionState } from '../internal/usePermissionState'
 import { useTokenAuth } from '../internal/useTokenAuth'
 import { explainList, explainScope, matchList, hasScope as matchScope, resolvePermissionState, toResourcePermission } from '../utils/permission'
+import { createEmptyPermissionState } from '../utils/permission-state'
 import { fetchRemotePermission, toPermissionState } from '../utils/remote'
+import { isAdapterPermissionSource, isFresh, isRemotePermissionSource } from '../utils/shared'
 
 type PermissionCheckDecision = 'allow' | 'deny' | 'unknown'
 
@@ -49,45 +51,23 @@ function combineDecisions(decisions: PermissionCheckDecision[], mode: NuvaPermis
   return decisions.includes('unknown') ? 'unknown' : 'allow'
 }
 
-function isRemoteSource(source: string) {
-  return source === 'remote' || source === 'hybrid'
-}
-
-function isAdapterSource(source: string) {
-  return source === 'adapter'
-}
-
-function isFresh(timestamp: number, maxAge: number) {
-  return maxAge > 0 && timestamp > 0 && Date.now() - timestamp < maxAge
-}
-
-function createEmptyPermissionState(source: NuvaPermissionState['source']): NuvaPermissionState {
-  return {
-    roles: [],
-    permissions: [],
-    scope: {},
-    dataAccess: { type: 'self' },
-    source,
-  }
-}
-
 export function usePermission<TUser extends Partial<NuvaPermissionState> = Partial<NuvaPermissionState>>() {
   const config = useNuvaConfig().auth
   const resolvers = useNuvaAuthResolvers()
   const tokenAuth = useTokenAuth<TUser>()
   const permissionState = usePermissionState()
-  const usesAuthAdapter = config.provider !== 'token' || isAdapterSource(config.permission.source)
+  const usesAuthAdapter = config.provider !== 'token' || isAdapterPermissionSource(config.permission.source)
   const authAdapter = usesAuthAdapter
     ? useAuthAdapter<TUser>(config.provider)
     : undefined
   const adapterPermission = authAdapter?.permission
 
   const state = computed(() => {
-    if (isAdapterSource(config.permission.source) && adapterPermission?.state) {
+    if (isAdapterPermissionSource(config.permission.source) && adapterPermission?.state) {
       return adapterPermission.state.value
     }
 
-    const fallback = isAdapterSource(config.permission.source)
+    const fallback = isAdapterPermissionSource(config.permission.source)
       ? createEmptyPermissionState('adapter')
       : config.permission.local
 
@@ -99,11 +79,11 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
   })
 
   const loaded = computed(() => {
-    if (isAdapterSource(config.permission.source)) {
+    if (isAdapterPermissionSource(config.permission.source)) {
       return !!adapterPermission?.loaded?.value
     }
 
-    if (!isRemoteSource(config.permission.source)) {
+    if (!isRemotePermissionSource(config.permission.source)) {
       return true
     }
 
@@ -124,7 +104,7 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
   }
 
   async function refresh() {
-    if (isAdapterSource(config.permission.source)) {
+    if (isAdapterPermissionSource(config.permission.source)) {
       return await adapterPermission?.refresh?.() || state.value
     }
 
@@ -148,11 +128,11 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
   }
 
   async function ensure() {
-    if (isAdapterSource(config.permission.source)) {
+    if (isAdapterPermissionSource(config.permission.source)) {
       return await adapterPermission?.ensure?.() || state.value
     }
 
-    if (!isRemoteSource(config.permission.source)) {
+    if (!isRemotePermissionSource(config.permission.source)) {
       return state.value
     }
 
@@ -167,7 +147,7 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
     warnInvalidPermissionArray('canState', permission)
     const singlePermission = pickFirstPermission(permission)
 
-    if (!isAdapterSource(config.permission.source)) {
+    if (!isAdapterPermissionSource(config.permission.source)) {
       return toDecision(matchList(state.value.permissions, singlePermission))
     }
 
@@ -190,7 +170,7 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
     warnInvalidPermissionArray('canAsync', permission)
     const singlePermission = pickFirstPermission(permission)
 
-    if (!isAdapterSource(config.permission.source)) {
+    if (!isAdapterPermissionSource(config.permission.source)) {
       const ensuredState = await ensure()
       return matchList(ensuredState.permissions, singlePermission)
     }
@@ -211,7 +191,7 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
       return true
     }
 
-    if (!isAdapterSource(config.permission.source)) {
+    if (!isAdapterPermissionSource(config.permission.source)) {
       const ensuredState = await ensure()
       return matchList(ensuredState.permissions, permissions, 'any')
     }
@@ -229,7 +209,7 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
       return true
     }
 
-    if (!isAdapterSource(config.permission.source)) {
+    if (!isAdapterPermissionSource(config.permission.source)) {
       const ensuredState = await ensure()
       return matchList(ensuredState.permissions, permissions, 'all')
     }

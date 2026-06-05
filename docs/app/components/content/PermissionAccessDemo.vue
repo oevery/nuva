@@ -36,7 +36,7 @@ const demos: Demo[] = [
     provider: 'token',
     global: true,
     permission: {
-      provider: 'profile',
+      source: 'remote',
       remote: {
         profile: {
           url: '/auth/getInfo',
@@ -73,11 +73,10 @@ const demos: Demo[] = [
       {
         id: 'server-guard',
         label: '服务端鉴权',
-        code: `export default defineEventHandler((event) => {
-  const user = requireAuth(event)
-
-  setNuvaAuthContext(event, user)
-  requireNuvaPermission(event, 'profile:update')
+        code: `export default defineNuvaPermissionHandler({
+  permission: 'profile:update',
+}, (event, auth) => {
+  return updateProfile(event, auth)
 })`,
       },
     ],
@@ -87,7 +86,7 @@ const demos: Demo[] = [
     label: '独立权限接口',
     title: 'Token + 权限接口',
     description: '用户信息和权限接口分离，适合权限需要高频刷新或权限服务独立维护的系统。',
-    points: ['登录态仍用 token', '权限只从 permissionEndpoint 读取', '适合独立权限中心'],
+    points: ['登录态仍用 token', '权限只从 remote.permission 读取', '适合独立权限中心'],
     snippets: [
       {
         id: 'config',
@@ -96,7 +95,7 @@ const demos: Demo[] = [
   auth: {
     provider: 'token',
     permission: {
-      provider: 'endpoint',
+      source: 'remote',
       remote: {
         permission: {
           url: '/auth/permissions',
@@ -129,9 +128,13 @@ const canCreateUser = computed(() => {
       {
         id: 'server',
         label: '服务端鉴权',
-        code: `setNuvaAuthContext(event, permissionState)
-requireNuvaRole(event, ['admin', 'manager'], 'any')
-requireNuvaPermission(event, 'system:user:create')`,
+        code: `export default defineNuvaProtectedHandler({
+  roles: ['admin', 'manager'],
+  roleMode: 'any',
+  permissions: ['system:user:create'],
+}, (event, auth) => {
+  return createUser(event, auth)
+})`,
       },
     ],
   },
@@ -149,7 +152,7 @@ requireNuvaPermission(event, 'system:user:create')`,
   nuvaAuth: {
     provider: 'token',
     permission: {
-      provider: 'local',
+      source: 'local',
       local: {
         roles: ['admin'],
         permissions: ['profile:read', 'profile:update'],
@@ -175,9 +178,11 @@ requireNuvaPermission(event, 'system:user:create')`,
       {
         id: 'server',
         label: '服务端鉴权',
-        code: `// 仅 demo/dev 场景使用本地兜底
-requireNuvaPermission(event, 'profile:update', {
-  allowLocalFallback: true,
+        code: `export default definePermissionHandler({
+  auth: requireDemoAuth,
+  permission: 'profile:update',
+}, (event, auth) => {
+  return updateProfile(event, auth)
 })`,
       },
     ],
@@ -196,7 +201,7 @@ requireNuvaPermission(event, 'profile:update', {
   auth: {
     provider: 'token',
     permission: {
-      provider: 'hybrid',
+      source: 'hybrid',
       local: {
         permissions: ['dashboard:read'],
       },
@@ -229,10 +234,11 @@ permission.can('dashboard:export')`,
       {
         id: 'server',
         label: '服务端鉴权',
-        code: `const user = requireAuth(event)
-
-setNuvaAuthContext(event, user)
-requireNuvaPermission(event, 'dashboard:export')`,
+        code: `export default defineNuvaPermissionHandler({
+  permission: 'dashboard:export',
+}, (event, auth) => {
+  return exportDashboard(event, auth)
+})`,
       },
     ],
   },

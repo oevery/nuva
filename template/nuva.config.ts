@@ -9,7 +9,7 @@ export default defineNuvaConfig({
     global: true,
     publicRoutes: ['/login'],
     permission: {
-      provider: 'profile',
+      source: 'remote',
       forbiddenPath: '/403',
       permissionMode: 'all',
       roleMode: 'any',
@@ -21,7 +21,7 @@ export default defineNuvaConfig({
       },
     },
     accessMenu: {
-      provider: 'endpoint',
+      source: 'remote',
       remote: {
         menu: {
           url: '/demo-auth/menus',

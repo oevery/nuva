@@ -1,8 +1,9 @@
 import type { H3Event } from 'h3'
-import type { NuvaPermissionMatchMode, NuvaPermissionState } from '../../../config'
+import type { NuvaPermissionCheckContext, NuvaPermissionMatchMode } from '../../../config'
 import { createError, getHeaders, getRequestURL } from 'h3'
 import { defineServerAuthAdapter, registerServerAuthAdapter } from '../../auth/runtime/adapters/server-registry'
 import { toBetterAuthPermissions } from '../../auth/runtime/utils/permission'
+import { createBetterAuthPermissionState, getBetterAuthActiveOrganizationId } from './utils/permission-state'
 
 interface BetterAuthLike {
   handler?: (request: Request) => Promise<Response> | Response
@@ -10,7 +11,7 @@ interface BetterAuthLike {
     getSession?: (input: { headers: Headers }) => Promise<unknown>
     getFullOrganization?: (input: { headers: Headers }) => Promise<unknown>
     getActiveMember?: (input: { headers: Headers }) => Promise<unknown>
-    hasPermission?: (input: { headers: Headers, body: { permissions: Record<string, string[]> } }) => Promise<unknown>
+    hasPermission?: (input: { headers: Headers, body: { permissions: Record<string, string[]>, context?: NuvaPermissionCheckContext } }) => Promise<unknown>
   }
 }
 
@@ -58,13 +59,14 @@ async function getActiveMember(auth: BetterAuthLike, event: H3Event, basePath: s
     || await readHandlerJson(auth, event, basePath, '/organization/get-active-member')
 }
 
-async function getPermissionResult(auth: BetterAuthLike, event: H3Event, basePath: string, permissions: Record<string, string[]>) {
+async function getPermissionResult(auth: BetterAuthLike, event: H3Event, basePath: string, permissions: Record<string, string[]>, context?: NuvaPermissionCheckContext) {
   const headers = getRequestHeaders(event)
+  const body = context ? { permissions, context } : { permissions }
 
   if (auth.api?.hasPermission) {
     return await auth.api.hasPermission({
       headers,
-      body: { permissions },
+      body,
     })
   }
 
@@ -76,7 +78,7 @@ async function getPermissionResult(auth: BetterAuthLike, event: H3Event, basePat
   const response = await auth.handler(new Request(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ permissions }),
+    body: JSON.stringify(body),
   }))
 
   if (!response.ok) {
@@ -92,44 +94,6 @@ function getSessionUser(session: unknown) {
   }
 
   return (session as { user?: unknown }).user || null
-}
-
-function getSessionActiveOrganizationId(session: unknown) {
-  if (!session || typeof session !== 'object') {
-    return undefined
-  }
-
-  return (session as { session?: { activeOrganizationId?: string | null }, activeOrganizationId?: string | null }).activeOrganizationId
-    || (session as { session?: { activeOrganizationId?: string | null } }).session?.activeOrganizationId
-    || undefined
-}
-
-function toRoleList(value: unknown) {
-  if (Array.isArray(value)) {
-    return value.map(String).filter(Boolean)
-  }
-
-  return typeof value === 'string' && value ? [value] : []
-}
-
-function createPermission(session: unknown, activeOrganization: unknown, activeMember: unknown): NuvaPermissionState {
-  const organization = activeOrganization && typeof activeOrganization === 'object'
-    ? activeOrganization as { id?: string, slug?: string }
-    : null
-  const member = activeMember && typeof activeMember === 'object'
-    ? activeMember as { role?: string | string[] }
-    : null
-
-  return {
-    roles: toRoleList(member?.role),
-    permissions: [],
-    scope: {
-      organizationId: organization?.id || getSessionActiveOrganizationId(session),
-      organizationSlug: organization?.slug,
-    },
-    dataAccess: { type: 'self' },
-    source: 'adapter',
-  }
 }
 
 function resolvePermissionResult(result: unknown) {
@@ -170,10 +134,10 @@ export function registerBetterAuthServerAdapter(options: BetterAuthServerAdapter
         return null
       }
 
-      const activeOrganizationId = getSessionActiveOrganizationId(session)
+      const activeOrganizationId = getBetterAuthActiveOrganizationId(session)
       const activeOrganization = activeOrganizationId ? await getFullOrganization(auth, h3Event, basePath) : null
       const activeMember = activeOrganizationId ? await getActiveMember(auth, h3Event, basePath) : null
-      const permission = createPermission(session, activeOrganization, activeMember)
+      const permission = createBetterAuthPermissionState({ session, activeOrganization, activeMember })
 
       return {
         session,
@@ -200,7 +164,7 @@ export function registerBetterAuthServerAdapter(options: BetterAuthServerAdapter
         return context
       },
       permission: {
-        async hasPermission(event, permission, mode) {
+        async hasPermission(event, permission, mode, context) {
           const permissionMap = toBetterAuthPermissions(permission)
 
           if (!permissionMap || !Object.keys(permissionMap).length) {
@@ -211,11 +175,11 @@ export function registerBetterAuthServerAdapter(options: BetterAuthServerAdapter
           const basePath = options.basePath || '/api/auth'
 
           if (mode === 'all') {
-            return resolvePermissionResult(await getPermissionResult(options.auth, h3Event, basePath, permissionMap))
+            return resolvePermissionResult(await getPermissionResult(options.auth, h3Event, basePath, permissionMap, context))
           }
 
           const results = await Promise.all(Object.entries(permissionMap).flatMap(([resource, actions]) => actions.map(async (action) => {
-            const result = await getPermissionResult(options.auth, h3Event, basePath, { [resource]: [action] })
+            const result = await getPermissionResult(options.auth, h3Event, basePath, { [resource]: [action] }, context)
             return resolvePermissionResult(result)
           })))
 

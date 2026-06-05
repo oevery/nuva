@@ -1,26 +1,16 @@
 import type { RouteRecordNormalized } from 'vue-router'
-import type { NuvaAccessMenuItem, NuvaPermissionMatchMode } from '../../../../config'
+import type { NuvaAccessMenuItem } from '../../../../config'
 import { useRouter } from 'vue-router'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 import { useAccessMenuState } from '../internal/useAccessMenuState'
 import { useNuvaAuthResolvers } from '../internal/useNuvaAuthResolvers'
 import { firstAccessMenuNumber, firstAccessMenuString, normalizeAccessMenus, toAccessMenuList, validateAccessMenus } from '../utils/access-menu'
 import { fetchRemoteAccessMenu } from '../utils/remote'
+import { resolveRouteAccessMeta } from '../utils/route-access'
+import { fallbackValue, isFresh, toMatchMode, toRecord } from '../utils/shared'
 import { usePermission } from './usePermission'
 
 type AccessCheck = Pick<NuvaAccessMenuItem, 'roles' | 'permissions' | 'scopes' | 'roleMode' | 'permissionMode'>
-
-function toRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? value as Record<string, unknown> : {}
-}
-
-function toMatchMode(value: unknown): NuvaPermissionMatchMode | undefined {
-  return value === 'any' || value === 'all' ? value : undefined
-}
-
-function fallbackValue(primary: unknown, fallback: unknown) {
-  return primary ?? fallback
-}
 
 function isAccessMenuItem(value: NuvaAccessMenuItem | null | undefined): value is NuvaAccessMenuItem {
   return value !== null && value !== undefined
@@ -45,20 +35,15 @@ function sortMenus(items: NuvaAccessMenuItem[]): NuvaAccessMenuItem[] {
     })
 }
 
-function isFresh(timestamp: number, maxAge: number) {
-  return maxAge > 0 && timestamp > 0 && Date.now() - timestamp < maxAge
-}
-
 function getRouteAccess(route?: RouteRecordNormalized | null): AccessCheck {
-  const meta = toRecord(route?.meta)
-  const auth = toRecord(meta.auth)
+  const access = resolveRouteAccessMeta(route)
 
   return {
-    roles: toAccessMenuList(auth.roles || meta.roles),
-    permissions: toAccessMenuList(auth.permissions || meta.permissions),
-    scopes: toAccessMenuList(auth.scopes || meta.scopes),
-    roleMode: toMatchMode(auth.roleMode || meta.roleMode),
-    permissionMode: toMatchMode(auth.permissionMode || meta.permissionMode),
+    roles: access.roles,
+    permissions: access.permissions,
+    scopes: access.scopes,
+    roleMode: access.roleMode,
+    permissionMode: access.permissionMode,
   }
 }
 
@@ -220,7 +205,7 @@ export function useAccessMenu() {
   const resolvers = useNuvaAuthResolvers()
   const warnedAccessMenuIssues = new Set<string>()
 
-  const rawMenus = computed<NuvaAccessMenuItem[]>(() => sortMenus(config.accessMenu.provider === 'route'
+  const rawMenus = computed<NuvaAccessMenuItem[]>(() => sortMenus(config.accessMenu.source === 'route'
     ? getRouteMenus(useRouter().getRoutes())
     : state.value.menus))
   const menus = computed<NuvaAccessMenuItem[]>(() => {
@@ -228,7 +213,7 @@ export function useAccessMenu() {
       ? useRouter().getRoutes()
       : []
 
-    if (config.accessMenu.provider !== 'route' && (config.accessMenu.routePrune || config.accessMenu.strictRoute)) {
+    if (config.accessMenu.source !== 'route' && (config.accessMenu.routePrune || config.accessMenu.strictRoute)) {
       warnAccessMenuIssues(rawMenus.value, routeList, config.accessMenu.strictRoute, config.accessMenu.routePrune, warnedAccessMenuIssues)
     }
 
@@ -248,7 +233,7 @@ export function useAccessMenu() {
   }
 
   async function refresh() {
-    if (config.accessMenu.provider !== 'endpoint') {
+    if (config.accessMenu.source !== 'remote') {
       return rawMenus.value
     }
 
@@ -267,7 +252,7 @@ export function useAccessMenu() {
   }
 
   async function ensure() {
-    if (config.accessMenu.provider === 'none' || config.accessMenu.provider === 'route') {
+    if (config.accessMenu.source === 'none' || config.accessMenu.source === 'route') {
       return menus.value
     }
 
@@ -275,7 +260,7 @@ export function useAccessMenu() {
       return menus.value
     }
 
-    if (config.accessMenu.provider === 'endpoint') {
+    if (config.accessMenu.source === 'remote') {
       await refresh()
     }
 
@@ -285,7 +270,7 @@ export function useAccessMenu() {
   return {
     menus,
     rawMenus,
-    ready: computed(() => config.accessMenu.provider === 'none' || state.value.loadedAt > 0 || rawMenus.value.length > 0),
+    ready: computed(() => config.accessMenu.source === 'none' || state.value.loadedAt > 0 || rawMenus.value.length > 0),
     setMenus,
     clearMenus,
     refresh,

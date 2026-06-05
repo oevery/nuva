@@ -18,7 +18,7 @@ describe('useTokenAuth', () => {
         ...structuredClone(defaultNuvaPublicConfig.auth),
         accessMenu: {
           ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          provider: 'profile',
+          source: 'profile',
         },
       },
     }
@@ -81,7 +81,7 @@ describe('useTokenAuth', () => {
         },
         accessMenu: {
           ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          provider: 'profile',
+          source: 'profile',
         },
       },
     }
@@ -131,7 +131,7 @@ describe('useTokenAuth', () => {
         },
         accessMenu: {
           ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          provider: 'profile',
+          source: 'profile',
         },
       },
     }

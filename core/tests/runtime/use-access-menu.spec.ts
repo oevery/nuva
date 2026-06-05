@@ -11,7 +11,7 @@ const routes = vi.hoisted(() => ([
   { name: 'index', path: '/', meta: {} },
   { name: 'dashboard', path: '/dashboard', meta: { auth: { permissions: ['dashboard:view'] } } },
   { name: 'users', path: '/users', meta: { auth: { roles: ['admin'] } } },
-  { name: 'reports', path: '/reports', meta: { permissions: ['report:read'] } },
+  { name: 'reports', path: '/reports', meta: { auth: { permissions: ['report:read'] } } },
   { name: 'settings', path: '/settings', meta: { menu: { title: 'Settings', order: 3 }, auth: { permissions: ['settings:view'] } } },
 ]))
 
@@ -63,7 +63,7 @@ describe('useAccessMenu', () => {
         },
         accessMenu: {
           ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          provider: 'profile',
+          source: 'profile',
         },
       },
     }
@@ -125,10 +125,10 @@ describe('useAccessMenu', () => {
     expect(accessMenu.menus.value.map(item => item.id)).toEqual(['dashboard', 'reports'])
   })
 
-  it('loads endpoint menus through resolver and caches them', async () => {
+  it('loads remote menus through resolver and caches them', async () => {
     useRuntimeConfig().public.nuva.auth.accessMenu = {
       ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-      provider: 'endpoint',
+      source: 'remote',
       cacheMaxAge: 60_000,
       remote: {
         ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu.remote),
@@ -151,10 +151,10 @@ describe('useAccessMenu', () => {
     expect(resolver).toHaveBeenCalledTimes(1)
   })
 
-  it('uses the menu resolver for endpoint menus', async () => {
+  it('uses the menu resolver for remote menus', async () => {
     useRuntimeConfig().public.nuva.auth.accessMenu = {
       ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-      provider: 'endpoint',
+      source: 'remote',
       remote: {
         ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu.remote),
         menu: serializeNuvaRemoteRequest({ url: '/api/menus' }),
@@ -211,7 +211,7 @@ describe('useAccessMenu', () => {
   })
 
   it('can build menus from route meta', () => {
-    useRuntimeConfig().public.nuva.auth.accessMenu.provider = 'route'
+    useRuntimeConfig().public.nuva.auth.accessMenu.source = 'route'
     useRuntimeConfig().public.nuva.auth.permission.local.permissions.push('settings:view')
     const accessMenu = useAccessMenu()
 
@@ -234,12 +234,11 @@ describe('useAccessMenu', () => {
       },
       accessMenu: {
         ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-        provider: 'profile',
+        source: 'profile',
       },
       permission: {
         ...structuredClone(defaultNuvaPublicConfig.auth.permission),
         source: 'adapter',
-        provider: 'adapter',
       },
     }
     useState('nuva:better-auth-session', () => ({

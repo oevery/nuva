@@ -1,6 +1,7 @@
 import { defaultNuvaPermissionConfig } from '../../config'
 import { validateAccessMenus } from '../../modules/auth/runtime/utils/access-menu'
 import { defineNuvaPermissions, explainList, explainScope, hasPermissionState, hasScope, matchList, resolvePermissionState, toBetterAuthPermissions, toList, toResourcePermission } from '../../modules/auth/runtime/utils/permission'
+import { hasRouteAccessMeta, resolveRouteAccessMeta } from '../../modules/auth/runtime/utils/route-access'
 
 describe('permission utils', () => {
   it('normalizes scalar and array permission inputs', () => {
@@ -100,5 +101,59 @@ describe('permission utils', () => {
         menu: expect.objectContaining({ id: 'missing' }),
       }),
     ])
+  })
+
+  it('resolves route auth meta without top-level access compatibility', () => {
+    expect(resolveRouteAccessMeta({ meta: { auth: true } })).toEqual({
+      roles: [],
+      permissions: [],
+      scopes: [],
+      roleMode: undefined,
+      permissionMode: undefined,
+      forbiddenPath: undefined,
+      requiresAuth: true,
+    })
+
+    const access = resolveRouteAccessMeta({
+      meta: {
+        auth: {
+          roles: 'admin',
+          permissions: ['profile:read'],
+          scopes: ['organizationId'],
+          roleMode: 'any',
+          permissionMode: 'all',
+          forbiddenPath: '/denied',
+        },
+        roles: ['ignored'],
+        permissions: ['ignored:read'],
+      },
+    })
+
+    expect(access).toEqual({
+      roles: ['admin'],
+      permissions: ['profile:read'],
+      scopes: ['organizationId'],
+      roleMode: 'any',
+      permissionMode: 'all',
+      forbiddenPath: '/denied',
+      requiresAuth: true,
+    })
+    expect(hasRouteAccessMeta(access)).toBe(true)
+
+    const topLevelOnly = resolveRouteAccessMeta({
+      meta: {
+        roles: ['admin'],
+        permissions: ['profile:read'],
+        scopes: ['organizationId'],
+      },
+    })
+
+    expect(topLevelOnly).toMatchObject({
+      roles: [],
+      permissions: [],
+      scopes: [],
+      requiresAuth: false,
+    })
+    expect(hasRouteAccessMeta(topLevelOnly)).toBe(false)
   })
 })

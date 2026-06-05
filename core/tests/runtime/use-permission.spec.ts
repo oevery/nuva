@@ -186,7 +186,6 @@ describe('usePermission', () => {
       permission: {
         ...structuredClone(defaultNuvaPublicConfig.auth.permission),
         source: 'adapter',
-        provider: 'adapter',
       },
     }
     useState('nuva:better-auth-session', () => ({
@@ -241,7 +240,6 @@ describe('usePermission', () => {
       permission: {
         ...structuredClone(defaultNuvaPublicConfig.auth.permission),
         source: 'adapter',
-        provider: 'adapter',
       },
     }
     useState('nuva:better-auth-session', () => ({

@@ -42,11 +42,10 @@ export interface NuvaApiConfig {
 export type NuvaAuthProvider = 'token' | 'better-auth' | (string & {})
 
 export type NuvaPermissionSource = 'local' | 'remote' | 'hybrid' | 'adapter'
-export type NuvaPermissionProvider = 'local' | 'profile' | 'endpoint' | 'remote' | 'hybrid' | 'adapter'
 export type NuvaPermissionMatchMode = 'any' | 'all'
 export type NuvaPermissionDecision = 'allow' | 'deny' | 'unknown'
 export type NuvaPermissionCheckReason = 'allowed' | 'missing-permission' | 'missing-role' | 'missing-scope' | 'unknown'
-export type NuvaAccessMenuSource = 'none' | 'profile' | 'endpoint' | 'route'
+export type NuvaAccessMenuSource = 'none' | 'profile' | 'remote' | 'route'
 export type NuvaAccessMenuType = 'route' | 'group' | 'link' | 'action' | 'iframe' | 'remote'
 
 export interface NuvaPermissionCheckContext {
@@ -130,8 +129,6 @@ export type NuvaAccessMenuResolver = (context: NuvaRemoteResolverContext) => Pro
 export type NuvaMenuResolver = NuvaAccessMenuResolver
 
 export interface NuvaRemotePermissionConfig {
-  profileEndpoint: string
-  permissionEndpoint: string
   profile: string
   permission: string
   profileResolver: boolean
@@ -145,7 +142,6 @@ export interface NuvaRemotePermissionOptions extends Omit<NuvaRemotePermissionCo
 }
 
 export interface NuvaRemoteAccessMenuConfig {
-  menuEndpoint: string
   menu: string
   menuResolver: boolean
 }
@@ -164,7 +160,6 @@ export interface NuvaResolvedRemotePermissionConfig extends Omit<NuvaRemotePermi
 }
 
 export interface NuvaPermissionConfig {
-  provider?: NuvaPermissionProvider
   source: NuvaPermissionSource
   forbiddenPath: string
   permissionMode: NuvaPermissionMatchMode
@@ -178,7 +173,7 @@ export interface NuvaResolvedPermissionConfig extends Omit<NuvaPermissionConfig,
 }
 
 export interface NuvaAccessMenuConfig {
-  provider: NuvaAccessMenuSource
+  source: NuvaAccessMenuSource
   filter: boolean
   routePrune: boolean
   strictRoute: boolean
@@ -242,7 +237,7 @@ export interface NuvaModuleOptions extends Partial<NuvaConfigFile> {
 export type NuvaAuthProjectConfig = NuvaConfigFile
 
 export interface NuvaAuthModuleOptions extends Partial<Omit<NuvaAuthConfig, 'token' | 'betterAuth' | 'permission' | 'accessMenu'>> {
-  permission?: Partial<Omit<NuvaPermissionConfig, 'local' | 'remote' | 'source'>> & {
+  permission?: Partial<Omit<NuvaPermissionConfig, 'local' | 'remote'>> & {
     local?: Partial<NuvaPermissionState>
     remote?: Partial<NuvaRemotePermissionOptions>
   }
@@ -287,8 +282,6 @@ export const defaultNuvaPermissionConfig = {
     source: 'local',
   },
   remote: {
-    profileEndpoint: '',
-    permissionEndpoint: '',
     profile: '',
     permission: '',
     profileResolver: false,
@@ -298,13 +291,12 @@ export const defaultNuvaPermissionConfig = {
 } satisfies NuvaPermissionConfig
 
 export const defaultNuvaAccessMenuConfig = {
-  provider: 'none',
+  source: 'none',
   filter: true,
   routePrune: true,
   strictRoute: true,
   cacheMaxAge: 0,
   remote: {
-    menuEndpoint: '',
     menu: '',
     menuResolver: false,
   },

@@ -1,4 +1,6 @@
 import type { NuvaAccessMenuItem, NuvaPermissionMatchMode } from '../../../../config'
+import { resolveRouteAccessMeta } from './route-access'
+import { toRecord, toStringList } from './shared'
 
 type MenuInput = Record<string, unknown>
 
@@ -15,11 +17,7 @@ export interface NuvaAccessMenuValidationIssue {
 }
 
 export function toAccessMenuList(value: unknown) {
-  if (!value) {
-    return []
-  }
-
-  return Array.isArray(value) ? value.map(String).filter(Boolean) : [String(value)]
+  return toStringList(value)
 }
 
 export function firstAccessMenuString(...values: unknown[]) {
@@ -112,10 +110,6 @@ export function normalizeAccessMenus(value: unknown): NuvaAccessMenuItem[] {
     })
 }
 
-function toRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? value as Record<string, unknown> : {}
-}
-
 function toSortedAccessList(value?: string[]) {
   return [...(value || [])].sort()
 }
@@ -129,17 +123,6 @@ function isSameAccessList(left?: string[], right?: string[]) {
 
 function isRouteMenu(item: NuvaAccessMenuItem) {
   return !item.external && (!item.type || item.type === 'route') && (!!item.path || !!item.name)
-}
-
-function getRouteAccess(route?: { meta?: unknown } | null) {
-  const meta = toRecord(route?.meta)
-  const auth = toRecord(meta.auth)
-
-  return {
-    roles: toAccessMenuList(auth.roles || meta.roles),
-    permissions: toAccessMenuList(auth.permissions || meta.permissions),
-    scopes: toAccessMenuList(auth.scopes || meta.scopes),
-  }
 }
 
 function findRoute(item: NuvaAccessMenuItem, routes: Array<{ name?: string | symbol | null, path: string, meta?: unknown }>) {
@@ -168,7 +151,7 @@ export function validateAccessMenus(items: NuvaAccessMenuItem[], routes: Array<{
     }
 
     if (route) {
-      const routeAccess = getRouteAccess(route)
+      const routeAccess = resolveRouteAccessMeta(route)
 
       for (const field of ['roles', 'permissions', 'scopes'] as const) {
         const menuList = toSortedAccessList(item[field])

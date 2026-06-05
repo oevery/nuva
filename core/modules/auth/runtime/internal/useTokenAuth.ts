@@ -5,6 +5,7 @@ import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 import { hasAccessMenus, normalizeAccessMenus } from '../utils/access-menu'
 import { hasPermissionState, resolvePermissionState } from '../utils/permission'
 import { fetchRemoteUser } from '../utils/remote'
+import { isAuthStatusError, isFresh, isRemotePermissionSource } from '../utils/shared'
 import { clearNuvaAuthDerivedState } from './clearAuthState'
 import { useAccessMenuState } from './useAccessMenuState'
 import { useNuvaAuthResolvers } from './useNuvaAuthResolvers'
@@ -23,23 +24,6 @@ export function useTokenAuthState<TUser = unknown>() {
     ready: false,
     checkedAt: 0,
   }))
-}
-
-function isRemoteSource(source: string) {
-  return source === 'remote' || source === 'hybrid'
-}
-
-function isFresh(timestamp: number, maxAge: number) {
-  return maxAge > 0 && timestamp > 0 && Date.now() - timestamp < maxAge
-}
-
-function isAuthError(error: unknown) {
-  if (!error || typeof error !== 'object') {
-    return false
-  }
-
-  const status = (error as { statusCode?: number, status?: number }).statusCode || (error as { status?: number }).status
-  return status === 401 || status === 403
 }
 
 export function useTokenAuth<TUser = unknown>() {
@@ -88,7 +72,7 @@ export function useTokenAuth<TUser = unknown>() {
   }
 
   function syncAccessMenuFromUser(user: TUser | null, authConfig = useNuvaConfig().auth) {
-    if (authConfig.accessMenu.provider !== 'profile') {
+    if (authConfig.accessMenu.source !== 'profile') {
       return
     }
 
@@ -122,7 +106,7 @@ export function useTokenAuth<TUser = unknown>() {
 
   async function ensureUser() {
     const authConfig = useNuvaConfig().auth
-    const shouldRefresh = isRemoteSource(authConfig.permission.source)
+    const shouldRefresh = isRemotePermissionSource(authConfig.permission.source)
     const fresh = isFresh(state.value.checkedAt, authConfig.permission.remote.cacheMaxAge)
 
     if (state.value.ready && (!shouldRefresh || fresh)) {
@@ -138,7 +122,7 @@ export function useTokenAuth<TUser = unknown>() {
       return await refreshUser()
     }
     catch (error) {
-      if (isAuthError(error)) {
+      if (isAuthStatusError(error)) {
         clearToken()
       }
 

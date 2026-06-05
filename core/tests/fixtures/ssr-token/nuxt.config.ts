@@ -19,11 +19,12 @@ export default defineNuxtConfig({
           loginPath: '/login',
           publicRoutes: ['/login', '/public'],
           permission: {
-            provider: 'profile',
+            source: 'remote',
             forbiddenPath: '/403',
             remote: {
-              profileEndpoint: '/api/profile',
-              permissionEndpoint: '/api/permission',
+              profile: {
+                url: '/api/profile',
+              },
             },
           },
         },

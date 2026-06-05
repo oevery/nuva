@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { NuvaAccessScope, NuvaPermissionMatchMode, NuvaPermissionState, NuvaResolvedAuthConfig } from '../../config'
+import type { NuvaAccessScope, NuvaPermissionCheckContext, NuvaPermissionMatchMode, NuvaPermissionState, NuvaResolvedAuthConfig } from '../../config'
 import type { PermissionInput, PermissionLikeUser } from '../../modules/auth/runtime/utils/permission'
 import { createError, defineEventHandler } from 'h3'
 import { useServerAuthAdapter } from '../../modules/auth/runtime/adapters/server-registry'
@@ -15,8 +15,13 @@ interface NuvaPermissionGuardOptions {
   allowLocalFallback?: boolean
 }
 
+interface NuvaPermissionAsyncGuardOptions extends NuvaPermissionGuardOptions {
+  context?: NuvaPermissionCheckContext
+}
+
 type MaybePromise<T> = T | Promise<T>
 type NuvaPermissionGuardInput = NuvaPermissionMatchMode | NuvaPermissionGuardOptions | undefined
+type NuvaPermissionAsyncGuardInput = NuvaPermissionMatchMode | NuvaPermissionAsyncGuardOptions | undefined
 type NuvaDataAccessType = NonNullable<NuvaPermissionState['dataAccess']>['type']
 type NuvaDataAccessTarget = NuvaAccessScope & {
   ownerId?: string | number
@@ -33,6 +38,10 @@ interface NuvaAccessGuardOptions {
   permissionMode?: NuvaPermissionMatchMode
 }
 
+interface NuvaProviderAccessGuardOptions extends NuvaAccessGuardOptions {
+  context?: NuvaPermissionCheckContext | ((event: H3Event) => MaybePromise<NuvaPermissionCheckContext | undefined>)
+}
+
 export interface NuvaProtectedEventHandlerOptions<TAuth extends PermissionLikeUser = PermissionLikeUser> extends NuvaAccessGuardOptions {
   auth: (event: H3Event) => MaybePromise<TAuth | null | undefined>
 }
@@ -41,7 +50,7 @@ export interface NuvaPermissionEventHandlerOptions<TAuth extends PermissionLikeU
   permission: PermissionInput
 }
 
-export interface NuvaProviderProtectedEventHandlerOptions extends NuvaAccessGuardOptions {
+export interface NuvaProviderProtectedEventHandlerOptions extends NuvaProviderAccessGuardOptions {
   provider?: string
 }
 
@@ -123,6 +132,10 @@ function resolveGuardOptions(input?: NuvaPermissionGuardInput): NuvaPermissionGu
   return typeof input === 'string' ? { mode: input } : input || {}
 }
 
+async function resolvePermissionCheckContext(event: H3Event, context: NuvaProviderAccessGuardOptions['context']) {
+  return typeof context === 'function' ? await context(event) : context
+}
+
 function toComparableValues(value: unknown) {
   if (value === undefined || value === null || value === '') {
     return []
@@ -158,7 +171,7 @@ function requireNuvaAccess(event: H3Event, options: NuvaAccessGuardOptions) {
   }
 }
 
-async function requireNuvaAccessAsync(event: H3Event, options: NuvaAccessGuardOptions) {
+async function requireNuvaAccessAsync(event: H3Event, options: NuvaProviderAccessGuardOptions) {
   const role = options.roles ?? options.role
   const permission = options.permissions ?? options.permission
   const scope = options.scopes ?? options.scope
@@ -172,7 +185,10 @@ async function requireNuvaAccessAsync(event: H3Event, options: NuvaAccessGuardOp
   }
 
   if (permission) {
-    await requireNuvaPermissionAsync(event, permission, options.permissionMode)
+    await requireNuvaPermissionAsync(event, permission, {
+      mode: options.permissionMode,
+      context: await resolvePermissionCheckContext(event, options.context),
+    })
   }
 }
 
@@ -258,14 +274,15 @@ export function requireNuvaPermission(event: H3Event, permission: PermissionInpu
   return state
 }
 
-export async function requireNuvaPermissionAsync(event: H3Event, permission: PermissionInput, input?: NuvaPermissionGuardInput) {
+export async function requireNuvaPermissionAsync(event: H3Event, permission: PermissionInput, input?: NuvaPermissionAsyncGuardInput) {
   const authConfig = getNuvaConfig(event).auth as NuvaResolvedAuthConfig
   const options = resolveGuardOptions(input)
+  const context = typeof input === 'object' && input ? input.context : undefined
   const adapter = useServerAuthAdapter(getAuthProvider(event))
   const mode = options.mode || authConfig.permission.permissionMode
 
   if (adapter?.permission?.hasPermission) {
-    const allowed = await adapter.permission.hasPermission(event, permission, mode)
+    const allowed = await adapter.permission.hasPermission(event, permission, mode, context)
 
     if (!allowed) {
       throw createForbiddenError('Missing required permission')

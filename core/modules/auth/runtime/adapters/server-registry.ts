@@ -1,9 +1,9 @@
-import type { NuvaPermissionMatchMode } from '../../../../config'
+import type { NuvaPermissionCheckContext, NuvaPermissionMatchMode } from '../../../../config'
 
 type ServerPermissionInput = string | string[]
 
 export interface NuvaAuthServerPermissionAdapter {
-  hasPermission?: (event: unknown, permission: ServerPermissionInput, mode: NuvaPermissionMatchMode) => Promise<boolean> | boolean
+  hasPermission?: (event: unknown, permission: ServerPermissionInput, mode: NuvaPermissionMatchMode, context?: NuvaPermissionCheckContext) => Promise<boolean> | boolean
 }
 
 export interface NuvaAuthServerAdapterCore<TContext = unknown> {

@@ -318,6 +318,67 @@ describe('server permission guards', () => {
     })
   })
 
+  it('passes dynamic permission context to better-auth server permission guards', async () => {
+    useRuntimeConfig().public.nuva.auth.provider = 'better-auth'
+    const hasPermission = vi.fn(async () => ({ data: true }))
+    const context = { target: { projectId: 'project-1' } }
+
+    registerBetterAuthServerAdapter({
+      auth: {
+        api: {
+          getSession: vi.fn(async () => ({ user: { id: 'user-1' } })),
+          hasPermission,
+        },
+      },
+    })
+
+    const event = createHeaderEvent({ cookie: 'better-session=valid' })
+
+    await requireNuvaAuthContext(event)
+    await expect(requireNuvaPermissionAsync(event, 'project:update', { context })).resolves.toBeTruthy()
+    expect(hasPermission).toHaveBeenCalledWith({
+      headers: expect.any(Headers),
+      body: {
+        permissions: { project: ['update'] },
+        context,
+      },
+    })
+  })
+
+  it('passes permission context from provider handlers', async () => {
+    useRuntimeConfig().public.nuva.auth.provider = 'custom-session'
+    const hasPermission = vi.fn(async () => true)
+    registerServerAuthAdapter('custom-session', defineServerAuthAdapter(() => ({
+      async requireAuth() {
+        return {
+          user: { id: 'user-1' },
+          permission: {
+            roles: ['admin'],
+            permissions: [],
+            scope: {},
+            dataAccess: { type: 'self' as const },
+            source: 'adapter' as const,
+          },
+        }
+      },
+      permission: {
+        hasPermission,
+      },
+    })))
+    const handler = defineNuvaPermissionHandler({
+      permission: 'project:update',
+      context: event => ({ target: { projectId: event.path } }),
+    }, () => ({ ok: true }))
+
+    await expect(handler(createTestEvent())).resolves.toEqual({ ok: true })
+    expect(hasPermission).toHaveBeenCalledWith(
+      expect.anything(),
+      'project:update',
+      'all',
+      { target: { projectId: '/api/test' } },
+    )
+  })
+
   it('uses better-auth server permission guards in provider permission handlers', async () => {
     useRuntimeConfig().public.nuva.auth.provider = 'better-auth'
     registerBetterAuthServerAdapter({

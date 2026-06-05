@@ -1,18 +1,12 @@
 import { useBetterAuthClient } from '../composables/useBetterAuthClient'
+import { getBetterAuthActiveOrganizationId } from '../utils/permission-state'
+import { getErrorStatus } from '../../../auth/runtime/utils/shared'
 
 interface BetterAuthSessionState {
   data: unknown
   activeOrganization: unknown
   activeMember: unknown
   ready: boolean
-}
-
-function getErrorStatus(error: unknown) {
-  if (!error || typeof error !== 'object') {
-    return
-  }
-
-  return (error as { statusCode?: number, status?: number }).statusCode || (error as { status?: number }).status
 }
 
 function getSessionData(result: unknown) {
@@ -49,16 +43,6 @@ function getDataValue<T>(result: unknown) {
   }
 
   return (data || null) as T | null
-}
-
-function getSessionActiveOrganizationId(session: unknown) {
-  if (!session || typeof session !== 'object') {
-    return undefined
-  }
-
-  return (session as { session?: { activeOrganizationId?: string | null }, activeOrganizationId?: string | null }).activeOrganizationId
-    || (session as { session?: { activeOrganizationId?: string | null } }).session?.activeOrganizationId
-    || undefined
 }
 
 export function useBetterAuthSession() {
@@ -106,7 +90,7 @@ export function useBetterAuthSession() {
       }
 
       const activeOrganization = betterAuth.useActiveOrganization ? getDataValue(betterAuth.useActiveOrganization(sessionFetch)) : null
-      const activeMember = getSessionActiveOrganizationId(data) && betterAuth.organization?.getActiveMember
+      const activeMember = getBetterAuthActiveOrganizationId(data) && betterAuth.organization?.getActiveMember
         ? getDataValue(await betterAuth.organization.getActiveMember())
         : null
 

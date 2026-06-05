@@ -14,7 +14,7 @@ export default defineNuxtModule({
       loginPath: '/login',
       publicRoutes: ['/login'],
       permission: {
-        provider: 'adapter',
+        source: 'adapter',
         forbiddenPath: '/403',
       },
     } as Record<string, unknown>)

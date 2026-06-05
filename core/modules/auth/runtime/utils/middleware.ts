@@ -1,19 +1,10 @@
-import type { RouteLocationNormalized } from 'vue-router'
-import type { NuvaPermissionMatchMode } from '../../../../config'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 import { useAuthAdapter } from '../adapters/registry'
 import { usePermission } from '../composables/usePermission'
 import { useAuthRedirect } from '../internal/redirect'
 import { useTokenAuth } from '../internal/useTokenAuth'
-
-interface RouteAccessMeta {
-  roles?: string[]
-  permissions?: string[]
-  scopes?: string[]
-  roleMode?: NuvaPermissionMatchMode
-  permissionMode?: NuvaPermissionMatchMode
-  forbiddenPath?: string
-}
+import { hasRouteAccessMeta, resolveRouteAccessMeta } from './route-access'
+import { getErrorStatus } from './shared'
 
 const warnedPublicRouteConflicts = new Set<string>()
 
@@ -25,30 +16,6 @@ function isPublicRoute(path: string, publicRoutes: string[]) {
 
     return route === path
   })
-}
-
-function getErrorStatus(error: unknown) {
-  if (!error || typeof error !== 'object') {
-    return
-  }
-
-  return (error as { statusCode?: number, status?: number }).statusCode || (error as { status?: number }).status
-}
-
-function getRouteAccessMeta(to: RouteLocationNormalized) {
-  const authMeta = typeof to.meta.auth === 'object' && to.meta.auth !== null
-    ? to.meta.auth as RouteAccessMeta
-    : undefined
-
-  return {
-    roles: authMeta?.roles || to.meta.roles,
-    permissions: authMeta?.permissions || to.meta.permissions,
-    scopes: authMeta?.scopes || to.meta.scopes,
-    roleMode: authMeta?.roleMode || to.meta.roleMode,
-    permissionMode: authMeta?.permissionMode || to.meta.permissionMode,
-    forbiddenPath: authMeta?.forbiddenPath || to.meta.forbiddenPath,
-    requiresAuth: to.meta.auth === true || !!authMeta,
-  }
 }
 
 function warnPublicRouteConflict(path: string) {
@@ -72,8 +39,8 @@ export function createAuthMiddleware() {
       return
     }
 
-    const accessMeta = getRouteAccessMeta(to)
-    const hasAccessMeta = !!(accessMeta.roles?.length || accessMeta.permissions?.length || accessMeta.scopes?.length)
+    const accessMeta = resolveRouteAccessMeta(to)
+    const hasAccessMeta = hasRouteAccessMeta(accessMeta)
 
     const publicRoute = isPublicRoute(to.path, authConfig.publicRoutes)
 
@@ -145,15 +112,15 @@ export function createAuthMiddleware() {
       return navigateTo(forbiddenPath)
     }
 
-    if (accessMeta.roles && !permission.hasRole(accessMeta.roles, roleMode)) {
+    if (accessMeta.roles.length && !permission.hasRole(accessMeta.roles, roleMode)) {
       return navigateTo(forbiddenPath)
     }
 
-    if (accessMeta.scopes && !permission.hasScope(accessMeta.scopes, permissionMode)) {
+    if (accessMeta.scopes.length && !permission.hasScope(accessMeta.scopes, permissionMode)) {
       return navigateTo(forbiddenPath)
     }
 
-    if (accessMeta.permissions) {
+    if (accessMeta.permissions.length) {
       const allowed = permissionMode === 'any'
         ? await permission.anyAsync(accessMeta.permissions)
         : await permission.allAsync(accessMeta.permissions)

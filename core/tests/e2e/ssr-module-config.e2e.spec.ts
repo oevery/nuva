@@ -20,7 +20,6 @@ describe('ssr module config', () => {
     expect(config.auth.publicRoutes).toContain('/public')
     expect(new Set(config.auth.publicRoutes).size).toBe(config.auth.publicRoutes.length)
     expect(config.auth.permission.source).toBe('remote')
-    expect(config.auth.permission.provider).toBe('profile')
     expect(config.auth.permission.remote.profile).toContain('/api/profile')
     expect(config.auth.permission.remote.permission).toBe('')
     expect(config.auth.permission.remote.profile).toBeTypeOf('string')
