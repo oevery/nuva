@@ -1,3 +1,5 @@
+import { env } from 'node:process'
+
 export default defineNuxtConfig({
   extends: ['@oevery/nuva'],
   srcDir: 'app',
@@ -11,6 +13,7 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@barzhsieh/nuxt-content-mermaid',
     '@nuxt/content',
+    'nuxt-llms',
   ],
   contentMermaid: {
     theme: {
@@ -44,6 +47,23 @@ export default defineNuxtConfig({
   },
   ui: {
     content: true,
+  },
+  llms: {
+    domain: env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    title: 'Nuva Docs',
+    description: 'Nuva 官方文档站，面向 Nuxt 业务项目提供 core layer、template、请求、认证、权限、共享 schema 和部署维护文档。',
+    sections: [
+      {
+        title: 'Documentation',
+        description: 'Nuva 用户指南、任务配方、API 参考、部署和维护文档。',
+        contentCollection: 'docs',
+      },
+      {
+        title: 'Landing',
+        description: 'Nuva 文档首页与入口说明。',
+        contentCollection: 'landing',
+      },
+    ],
   },
   app: {
     head: {

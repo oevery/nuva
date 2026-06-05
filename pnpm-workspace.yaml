@@ -33,6 +33,7 @@ catalog:
 
   msw: ^2.14.6
   nuxt: ^4.4.7
+  nuxt-llms: ^0.2.0
   ohash: ^2.0.11
   shiki: ^4.1.0
   tailwindcss: ^4.3.0
