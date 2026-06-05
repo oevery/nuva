@@ -68,7 +68,7 @@ useSeoMeta({
     >
       <UContainer>
         <UCard class="mx-auto max-w-4xl border border-default/70 bg-elevated/50">
-          <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-center">
             <div>
               <p class="text-sm font-medium text-primary">
                 Quick Start
@@ -86,13 +86,13 @@ useSeoMeta({
               </p>
             </div>
 
-            <div class="overflow-hidden rounded-lg border border-muted bg-inverted px-4 py-3">
-              <CodePreview
-                :code="quickStart.command"
-                language="bash"
-                cache-key="landing-quick-start"
-              />
-            </div>
+            <CodePreview
+              class="min-w-0"
+              :code="quickStart.command"
+              language="bash"
+              filename="Terminal"
+              cache-key="landing-quick-start"
+            />
           </div>
         </UCard>
       </UContainer>

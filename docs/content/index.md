@@ -14,16 +14,6 @@ hero:
       color: primary
       variant: solid
       trailingIcon: i-lucide-arrow-right
-    - label: 查看架构
-      to: /guide/architecture
-      color: neutral
-      variant: subtle
-    - label: GitHub
-      to: https://github.com/oevery/nuva
-      color: neutral
-      variant: ghost
-      trailingIcon: i-lucide-external-link
-      target: _blank
 quickStart:
   title: 5 分钟启动一个 Nuva 项目
   description: 先下载 template，跑通默认页面、接口、schema 和请求流程，再逐步替换成你的业务实现。

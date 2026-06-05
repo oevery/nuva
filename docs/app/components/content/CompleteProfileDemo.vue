@@ -179,18 +179,18 @@ const currentStep = computed<DemoStep>(() => steps.value.find(step => step.key =
       </div>
     </div>
 
-    <div class="mt-4 overflow-hidden rounded-2xl border border-default bg-neutral-950 text-sm text-neutral-100">
-      <div class="border-b border-white/10 p-3">
+    <div class="mt-4 overflow-hidden rounded-2xl border border-default bg-default text-sm shadow-sm">
+      <div class="border-b border-default bg-elevated/55 p-3">
         <div class="grid gap-2 sm:grid-cols-3">
           <button
             v-for="(step, index) in steps"
             :key="step.key"
             class="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition"
-            :class="activeStep === step.key ? 'border-primary/60 bg-primary/15 text-primary' : 'border-white/10 bg-white/5 text-neutral-300 hover:border-primary/30 hover:text-neutral-100'"
+            :class="activeStep === step.key ? 'border-primary/50 bg-primary/10 text-primary' : 'border-default bg-default/70 text-toned hover:border-primary/30 hover:text-default'"
             @click="activeStep = step.key"
           >
             <span class="flex items-center gap-2 text-sm font-medium">
-              <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs">
+              <span class="flex h-6 w-6 items-center justify-center rounded-full bg-elevated text-xs">
                 {{ index + 1 }}
               </span>
               {{ step.title }}
@@ -203,12 +203,12 @@ const currentStep = computed<DemoStep>(() => steps.value.find(step => step.key =
         </div>
       </div>
 
-      <div class="flex flex-col gap-3 border-b border-white/10 px-4 py-4 md:flex-row md:items-start md:justify-between">
+      <div class="flex flex-col gap-3 border-b border-default px-4 py-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <p class="text-lg font-semibold text-neutral-100">
+          <p class="text-lg font-semibold text-highlighted">
             {{ currentStep.title }}
           </p>
-          <p class="mt-2 max-w-2xl text-sm leading-6 text-neutral-400">
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-toned">
             {{ currentStep.description }}
           </p>
         </div>
@@ -217,14 +217,20 @@ const currentStep = computed<DemoStep>(() => steps.value.find(step => step.key =
           <UBadge :color="currentStep.color" variant="subtle" size="lg">
             {{ currentStep.status }}
           </UBadge>
-          <code class="text-xs uppercase tracking-[0.2em] text-neutral-500">
+          <code class="text-xs uppercase tracking-[0.2em] text-muted">
             {{ currentStep.codeLabel }}
           </code>
         </div>
       </div>
 
-      <div class="max-h-[26rem] overflow-auto px-4 py-4">
-        <CodePreview :code="currentStep.content" language="json" :cache-key="`complete-profile-${currentStep.key}`" />
+      <div class="px-4 py-4">
+        <CodePreview
+          :code="currentStep.content"
+          language="json"
+          :title="currentStep.codeLabel"
+          :cache-key="`complete-profile-${currentStep.key}`"
+          max-height="26rem"
+        />
       </div>
     </div>
   </div>

@@ -344,14 +344,12 @@ const session = await auth.api.getSession({ headers })
         <div
           v-for="snippet in demo.snippets"
           :key="snippet.id"
-          class="rounded-2xl border border-default bg-neutral-950 p-4 text-sm text-neutral-100"
+          class="min-w-0"
         >
-          <p class="mb-3 font-medium text-neutral-300">
-            {{ snippet.label }}
-          </p>
           <CodePreview
             :code="snippet.code"
             :language="getSnippetLanguage(snippet)"
+            :title="snippet.label"
             :cache-key="`permission-${demo.id}-${snippet.id}`"
           />
         </div>

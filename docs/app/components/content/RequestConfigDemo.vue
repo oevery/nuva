@@ -39,8 +39,8 @@ const effectiveResult = computed(() => {
 
 <template>
   <div class="my-8 rounded-3xl border border-default bg-elevated/30 p-6">
-    <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <div class="space-y-4">
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <div class="min-w-0 space-y-4">
         <div class="grid gap-4 md:grid-cols-2">
           <label class="grid gap-2 text-sm">
             <span class="font-medium text-default">baseURL</span>
@@ -62,31 +62,27 @@ const effectiveResult = computed(() => {
           <USwitch v-model="config.envelopeUnwrap" />
         </label>
 
-        <div class="rounded-2xl border border-default bg-neutral-950 p-4 text-sm text-neutral-100">
-          <p class="mb-3 font-medium text-neutral-300">
-            nuva.config.ts
-          </p>
-          <CodePreview :code="runtimeConfigPreview" language="ts" cache-key="request-config" />
-        </div>
+        <CodePreview
+          :code="runtimeConfigPreview"
+          language="ts"
+          filename="nuva.config.ts"
+          cache-key="request-config"
+        />
       </div>
 
-      <div class="space-y-4">
+      <div class="min-w-0 space-y-4">
         <div class="rounded-2xl border border-default bg-default/80 p-4">
           <p class="text-sm font-medium text-default">
             输入响应
           </p>
-          <div class="mt-3">
-            <CodePreview :code="wrappedResponsePreview" language="json" cache-key="request-input" />
-          </div>
+          <CodePreview class="mt-3" :code="wrappedResponsePreview" language="json" cache-key="request-input" />
         </div>
 
         <div class="rounded-2xl border border-primary/30 bg-primary/5 p-4">
           <p class="text-sm font-medium text-default">
             useHttpClient() 最终拿到的结果
           </p>
-          <div class="mt-3">
-            <CodePreview :code="effectiveResult" language="json" cache-key="request-output" />
-          </div>
+          <CodePreview class="mt-3" :code="effectiveResult" language="json" cache-key="request-output" />
         </div>
       </div>
     </div>

@@ -34,8 +34,8 @@ const output = computed(() => {
 
 <template>
   <div class="my-8 rounded-3xl border border-default bg-elevated/30 p-6">
-    <div class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-      <div>
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <div class="min-w-0">
         <p class="text-sm font-semibold text-highlighted">
           一份 schema，同步服务前后端
         </p>
@@ -56,7 +56,7 @@ const output = computed(() => {
         </div>
       </div>
 
-      <div class="space-y-4">
+      <div class="min-w-0 space-y-4">
         <UAlert
           :color="result.success ? 'success' : 'warning'"
           :title="result.success ? '校验通过' : '校验未通过'"
@@ -64,12 +64,12 @@ const output = computed(() => {
           variant="subtle"
         />
 
-        <div class="rounded-2xl border border-default bg-neutral-950 p-4 text-sm text-neutral-100">
-          <p class="mb-3 font-medium text-neutral-300">
-            safeParse 输出
-          </p>
-          <CodePreview :code="output" language="json" cache-key="shared-schema-output" />
-        </div>
+        <CodePreview
+          :code="output"
+          language="json"
+          title="safeParse 输出"
+          cache-key="shared-schema-output"
+        />
       </div>
     </div>
   </div>

@@ -19,6 +19,7 @@
     "@nuxt/ui": "catalog:",
     "@oevery/nuva": "workspace:*",
     "nuxt": "catalog:",
+    "shiki": "catalog:",
     "valibot": "catalog:"
   },
   "devDependencies": {
