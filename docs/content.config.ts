@@ -16,11 +16,17 @@ export default defineContentConfig({
           links: z.array(z.object({
             label: z.string(),
             to: z.string(),
+            target: z.string().optional(),
             color: z.enum(buttonColors).optional(),
             variant: z.enum(buttonVariants).optional(),
             trailingIcon: z.string().optional(),
           })),
         }),
+        quickStart: z.object({
+          title: z.string(),
+          description: z.string().optional(),
+          command: z.string(),
+        }).optional(),
         sections: z.array(z.object({
           title: z.string(),
           description: z.string().optional(),
@@ -31,6 +37,30 @@ export default defineContentConfig({
             to: z.string().optional(),
           })),
         })),
+        audience: z.object({
+          title: z.string(),
+          description: z.string().optional(),
+          fits: z.array(z.object({
+            title: z.string(),
+            description: z.string(),
+            icon: z.string(),
+          })),
+          avoids: z.array(z.object({
+            title: z.string(),
+            description: z.string(),
+            icon: z.string(),
+          })),
+        }).optional(),
+        paths: z.object({
+          title: z.string(),
+          description: z.string().optional(),
+          items: z.array(z.object({
+            title: z.string(),
+            description: z.string(),
+            icon: z.string(),
+            to: z.string(),
+          })),
+        }).optional(),
       }),
     }),
     docs: defineCollection({

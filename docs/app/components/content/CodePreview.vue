@@ -86,6 +86,30 @@ function highlightVue(source: string) {
   })
 }
 
+function highlightShell(source: string) {
+  const pattern = /(#.*$)|\b(cd|pnpm|npm|npx|bun|yarn|git|node)\b|(dlx|install|dev|build|generate|preview|add|run)\b|((?:gh:)?[\w@./:-]+)|("(?:\\.|[^"])*"|'(?:\\.|[^'])*')/gm
+
+  return highlightByPattern(source, pattern, (match) => {
+    if (match[1]) {
+      return token(match[1], 'code-token-comment')
+    }
+
+    if (match[2]) {
+      return token(match[2], 'code-token-keyword')
+    }
+
+    if (match[3]) {
+      return token(match[3], 'code-token-literal')
+    }
+
+    if (match[4]) {
+      return token(match[4], 'code-token-property')
+    }
+
+    return token(match[5] || '', 'code-token-string')
+  })
+}
+
 const highlightedCode = computed(() => {
   const code = props.code.trimEnd()
 
@@ -95,6 +119,10 @@ const highlightedCode = computed(() => {
 
   if (props.language === 'vue') {
     return highlightVue(code)
+  }
+
+  if (props.language === 'bash' || props.language === 'shell' || props.language === 'sh') {
+    return highlightShell(code)
   }
 
   return highlightTs(code)

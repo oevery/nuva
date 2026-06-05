@@ -3,17 +3,33 @@ import type { ContentNavigationItem } from '@nuxt/content'
 
 const navigation = inject<Ref<ContentNavigationItem[] | undefined>>('navigation')
 const { header } = useAppConfig()
+const route = useRoute()
+
+const navLinks = computed(() => (header?.nav ?? []).map(link => ({
+  ...link,
+  active: link.to === '/' ? route.path === '/' : route.path.startsWith(link.to),
+})))
 </script>
 
 <template>
   <UHeader
     :ui="{ center: 'flex-1' }"
   >
-    <UContentSearchButton
-      v-if="header?.search"
-      :collapsed="false"
-      class="hidden w-full lg:flex"
-    />
+    <div class="hidden flex-1 items-center gap-2 lg:flex">
+      <UButton
+        v-for="link in navLinks"
+        :key="link.to"
+        v-bind="link"
+        :color="link.active ? 'primary' : 'neutral'"
+        variant="ghost"
+      />
+
+      <UContentSearchButton
+        v-if="header?.search"
+        :collapsed="false"
+        class="ml-auto max-w-xs flex-1"
+      />
+    </div>
 
     <template #left>
       <NuxtLink
@@ -42,10 +58,25 @@ const { header } = useAppConfig()
     </template>
 
     <template #body>
-      <UContentNavigation
-        highlight
-        :navigation="navigation"
-      />
+      <div class="space-y-4">
+        <div class="grid gap-1">
+          <UButton
+            v-for="link in navLinks"
+            :key="link.to"
+            v-bind="link"
+            :color="link.active ? 'primary' : 'neutral'"
+            variant="ghost"
+            block
+          />
+        </div>
+
+        <USeparator />
+
+        <UContentNavigation
+          highlight
+          :navigation="navigation"
+        />
+      </div>
     </template>
   </UHeader>
 </template>

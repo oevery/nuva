@@ -29,6 +29,32 @@ export default defineAppConfig({
     to: '/',
     search: true,
     colorMode: true,
+    nav: [
+      {
+        label: '文档',
+        to: '/getting-started',
+      },
+      {
+        label: '指南',
+        to: '/guide',
+      },
+      {
+        label: '配方',
+        to: '/recipes',
+      },
+      {
+        label: '参考',
+        to: '/reference',
+      },
+      {
+        label: '部署',
+        to: '/deployment',
+      },
+      {
+        label: '开发维护',
+        to: '/maintenance',
+      },
+    ],
     links: [
       {
         'icon': 'i-simple-icons-github',
