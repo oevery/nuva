@@ -2,8 +2,7 @@ import { defineNuvaConfig } from '@oevery/nuva/config'
 
 export default defineNuvaConfig({
   auth: {
-    preset: 'remote',
-    mode: 'frontend',
+    provider: 'token',
     loginPath: '/login',
     homePath: '/',
     redirectQuery: 'redirect',

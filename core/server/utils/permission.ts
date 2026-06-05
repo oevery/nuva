@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import type { NuvaAccessScope, NuvaPermissionMatchMode, NuvaPermissionState, NuvaResolvedAuthConfig } from '../../config'
 import type { PermissionInput, PermissionLikeUser } from '../../modules/auth/runtime/utils/permission'
 import { createError, defineEventHandler } from 'h3'
+import { useServerAuthAdapter } from '../../modules/auth/runtime/adapters/server-registry'
 import { hasScope, matchList, resolvePermissionState } from '../../modules/auth/runtime/utils/permission'
 import { getNuvaConfig } from './config'
 
@@ -40,9 +41,18 @@ export interface NuvaPermissionEventHandlerOptions<TAuth extends PermissionLikeU
   permission: PermissionInput
 }
 
-export type NuvaProtectedEventHandler<TAuth extends PermissionLikeUser = PermissionLikeUser, TResult = unknown> = (event: H3Event, auth: TAuth, permission: NuvaPermissionState) => MaybePromise<TResult>
+export interface NuvaProviderProtectedEventHandlerOptions extends NuvaAccessGuardOptions {
+  provider?: string
+}
 
-function getNuvaServerAuthContext(event: H3Event) {
+export interface NuvaProviderPermissionEventHandlerOptions extends Omit<NuvaProviderProtectedEventHandlerOptions, 'permission' | 'permissions'> {
+  permission: PermissionInput
+}
+
+export type NuvaProtectedEventHandler<TAuth extends PermissionLikeUser = PermissionLikeUser, TResult = unknown> = (event: H3Event, auth: TAuth, permission: NuvaPermissionState) => MaybePromise<TResult>
+export type NuvaProviderProtectedEventHandler<TAuth = unknown, TResult = unknown> = (event: H3Event, auth: TAuth, permission: NuvaPermissionState) => MaybePromise<TResult>
+
+function getNuvaServerPermissionContext(event: H3Event) {
   const context = event.context as H3Event['context'] & {
     nuvaAuth?: NuvaServerAuthContext
   }
@@ -65,6 +75,48 @@ function createUnauthorizedError() {
     statusMessage: 'Unauthorized',
     message: 'Authentication is required before permission checks',
   })
+}
+
+function createServerAdapterError(provider: string) {
+  return createError({
+    statusCode: 500,
+    statusMessage: `Nuva server auth adapter "${provider}" is not registered`,
+    message: `Register a Nuva server auth adapter for provider "${provider}" before using server auth helpers.`,
+  })
+}
+
+function getAuthProvider(event: H3Event, provider?: string) {
+  return provider || (getNuvaConfig(event).auth as NuvaResolvedAuthConfig).provider
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object'
+}
+
+function getPermissionCandidate(context: unknown): NuvaPermissionState | PermissionLikeUser | null {
+  if (!isObject(context)) {
+    return null
+  }
+
+  const permission = context.permission
+
+  if (isObject(permission)) {
+    return permission as unknown as NuvaPermissionState
+  }
+
+  if ('roles' in context || 'permissions' in context || 'scope' in context || 'dataAccess' in context) {
+    return context as PermissionLikeUser
+  }
+
+  return null
+}
+
+function setPermissionContextFromAuthContext(event: H3Event, context: unknown) {
+  const permission = getPermissionCandidate(context)
+
+  if (permission) {
+    setNuvaAuthContext(event, permission)
+  }
 }
 
 function resolveGuardOptions(input?: NuvaPermissionGuardInput): NuvaPermissionGuardOptions {
@@ -106,17 +158,35 @@ function requireNuvaAccess(event: H3Event, options: NuvaAccessGuardOptions) {
   }
 }
 
+async function requireNuvaAccessAsync(event: H3Event, options: NuvaAccessGuardOptions) {
+  const role = options.roles ?? options.role
+  const permission = options.permissions ?? options.permission
+  const scope = options.scopes ?? options.scope
+
+  if (role) {
+    requireNuvaRole(event, role, options.roleMode)
+  }
+
+  if (scope) {
+    requireNuvaScope(event, scope, options.permissionMode)
+  }
+
+  if (permission) {
+    await requireNuvaPermissionAsync(event, permission, options.permissionMode)
+  }
+}
+
 export function setNuvaAuthContext(event: H3Event, permission: NuvaPermissionState | PermissionLikeUser | null | undefined) {
   const authConfig = getNuvaConfig(event).auth as NuvaResolvedAuthConfig
   const state = resolvePermissionState(permission, authConfig.permission.local, authConfig.permission.source)
 
-  getNuvaServerAuthContext(event).permission = state
+  getNuvaServerPermissionContext(event).permission = state
   return state
 }
 
 export function getNuvaPermissionState(event: H3Event, options: Pick<NuvaPermissionGuardOptions, 'allowLocalFallback'> = {}) {
   const authConfig = getNuvaConfig(event).auth as NuvaResolvedAuthConfig
-  const permission = getNuvaServerAuthContext(event).permission
+  const permission = getNuvaServerPermissionContext(event).permission
 
   if (permission) {
     return permission
@@ -129,6 +199,53 @@ export function getNuvaPermissionState(event: H3Event, options: Pick<NuvaPermiss
   throw createUnauthorizedError()
 }
 
+export async function getNuvaAuthContext<TContext = unknown>(event: H3Event, provider?: string) {
+  const authProvider = getAuthProvider(event, provider)
+  const adapter = useServerAuthAdapter<TContext>(authProvider)
+
+  if (!adapter?.resolveContext) {
+    return null
+  }
+
+  const context = await adapter.resolveContext(event)
+  setPermissionContextFromAuthContext(event, context)
+
+  return context
+}
+
+export async function requireNuvaAuthContext<TContext = unknown>(event: H3Event, provider?: string) {
+  const authProvider = getAuthProvider(event, provider)
+  const adapter = useServerAuthAdapter<TContext>(authProvider)
+
+  if (!adapter) {
+    throw createServerAdapterError(authProvider)
+  }
+
+  if (adapter.requireAuth) {
+    const context = await adapter.requireAuth(event)
+
+    if (!context) {
+      throw createUnauthorizedError()
+    }
+
+    setPermissionContextFromAuthContext(event, context)
+    return context
+  }
+
+  if (!adapter.resolveContext) {
+    throw createServerAdapterError(authProvider)
+  }
+
+  const context = await adapter.resolveContext(event)
+
+  if (!context) {
+    throw createUnauthorizedError()
+  }
+
+  setPermissionContextFromAuthContext(event, context)
+  return context
+}
+
 export function requireNuvaPermission(event: H3Event, permission: PermissionInput, input?: NuvaPermissionGuardInput) {
   const authConfig = getNuvaConfig(event).auth as NuvaResolvedAuthConfig
   const options = resolveGuardOptions(input)
@@ -139,6 +256,25 @@ export function requireNuvaPermission(event: H3Event, permission: PermissionInpu
   }
 
   return state
+}
+
+export async function requireNuvaPermissionAsync(event: H3Event, permission: PermissionInput, input?: NuvaPermissionGuardInput) {
+  const authConfig = getNuvaConfig(event).auth as NuvaResolvedAuthConfig
+  const options = resolveGuardOptions(input)
+  const adapter = useServerAuthAdapter(getAuthProvider(event))
+  const mode = options.mode || authConfig.permission.permissionMode
+
+  if (adapter?.permission?.hasPermission) {
+    const allowed = await adapter.permission.hasPermission(event, permission, mode)
+
+    if (!allowed) {
+      throw createForbiddenError('Missing required permission')
+    }
+
+    return getNuvaPermissionState(event, options)
+  }
+
+  return requireNuvaPermission(event, permission, options)
 }
 
 export function requireNuvaRole(event: H3Event, role: PermissionInput, input?: NuvaPermissionGuardInput) {
@@ -238,6 +374,33 @@ export function definePermissionHandler<TAuth extends PermissionLikeUser = Permi
   handler: NuvaProtectedEventHandler<TAuth, TResult>,
 ) {
   return defineProtectedHandler(
+    {
+      ...options,
+      permissions: options.permission,
+    },
+    handler,
+  )
+}
+
+export function defineNuvaProtectedHandler<TAuth = unknown, TResult = unknown>(
+  options: NuvaProviderProtectedEventHandlerOptions,
+  handler: NuvaProviderProtectedEventHandler<TAuth, TResult>,
+) {
+  return defineEventHandler(async (event) => {
+    const auth = await requireNuvaAuthContext<TAuth>(event, options.provider)
+    const permission = getNuvaPermissionState(event)
+
+    await requireNuvaAccessAsync(event, options)
+
+    return handler(event, auth, permission)
+  })
+}
+
+export function defineNuvaPermissionHandler<TAuth = unknown, TResult = unknown>(
+  options: NuvaProviderPermissionEventHandlerOptions,
+  handler: NuvaProviderProtectedEventHandler<TAuth, TResult>,
+) {
+  return defineNuvaProtectedHandler(
     {
       ...options,
       permissions: options.permission,

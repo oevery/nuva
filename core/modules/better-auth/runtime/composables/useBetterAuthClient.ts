@@ -1,4 +1,4 @@
-import type { NuvaPermissionConfig } from '../../../../config'
+import type { NuvaBetterAuthOrganizationConfig } from '../../../../config'
 import { organizationClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/vue'
 import { hash } from 'ohash'
@@ -20,8 +20,8 @@ function getClientFromCache(cache: Map<string, BetterAuthClient>, key: string, c
   return newClient
 }
 
-function createBetterAuthPlugins(config: NuvaPermissionConfig['betterAuth']) {
-  const shouldUseOrganization = config.organization || config.hasPermission || config.dynamicAccessControl
+function createBetterAuthPlugins(config: NuvaBetterAuthOrganizationConfig) {
+  const shouldUseOrganization = config.enabled || config.hasPermission || config.dynamicAccessControl
 
   if (!shouldUseOrganization) {
     return []
@@ -32,16 +32,15 @@ function createBetterAuthPlugins(config: NuvaPermissionConfig['betterAuth']) {
     : undefined)]
 }
 
-export function useBetterAuth() {
+export function useBetterAuthClient() {
   const authConfig = useNuvaConfig().auth
   const config = authConfig.betterAuth
-  const permissionConfig = authConfig.permission as { betterAuth: NuvaPermissionConfig['betterAuth'] }
   const url = useRequestURL()
   const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
   const basePath = config.basePath.startsWith('/') ? config.basePath : `/${config.basePath}`
   const baseURL = url.origin
-  const plugins = createBetterAuthPlugins(permissionConfig.betterAuth)
-  const key = `nuva:better-auth:${hash({ baseURL, basePath, permission: permissionConfig.betterAuth })}`
+  const plugins = createBetterAuthPlugins(config.organization)
+  const key = `nuva:better-auth:${hash({ baseURL, basePath, organization: config.organization })}`
 
   const createClient = () => createAuthClient({
     baseURL,

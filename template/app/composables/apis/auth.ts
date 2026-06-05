@@ -17,13 +17,14 @@ export function useAuthApi() {
 
 export function useLogin() {
   const authApi = useAuthApi()
-  const auth = useAuth<CurrentUser>()
+  const tokenAuth = useTokenAuthClient<CurrentUser>()
+  const permission = usePermission()
 
   return useRequest((data: LoginFormInput) => authApi.login(data), {
     immediate: false,
   }).onSuccess(({ data }) => {
-    auth.loginWithToken(data.token, data.user)
-    auth.permission.setPermission(data.user)
+    tokenAuth.setSession(data.token, data.user)
+    permission.setPermission(data.user)
   })
 }
 

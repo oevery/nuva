@@ -101,6 +101,10 @@ describe('useHttpClient runtime chain', () => {
     expect(auth.logout).toHaveBeenCalledTimes(1)
     expect(auth.toLogin).toHaveBeenCalledTimes(1)
 
+    await expect(hooks.onError(createError({ statusCode: 401 }), { meta: { unauthorizedBehavior: 'throw' } } as any)).rejects.toMatchObject({ statusCode: 401 })
+    expect(auth.logout).toHaveBeenCalledTimes(1)
+    expect(auth.toLogin).toHaveBeenCalledTimes(1)
+
     await expect(hooks.onError(createError({ statusCode: 403 }))).rejects.toMatchObject({ statusCode: 403 })
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({
       message: '无权限执行该操作',

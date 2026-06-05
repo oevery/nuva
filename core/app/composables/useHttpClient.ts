@@ -2,8 +2,10 @@ import type { NuvaPublicConfig } from '../../config'
 import { createAlova } from 'alova'
 import adapterFetch from 'alova/fetch'
 import NuxtHook from 'alova/nuxt'
+import { useNuxtApp, useRuntimeConfig } from 'nuxt/app'
 import { hash } from 'ohash'
 import { resolveNuxtBaseURL } from '../utils/http/config'
+import { useHttpRequestHooks } from '../utils/http/hooks'
 
 type HttpClient = ReturnType<typeof createHttpClient>
 

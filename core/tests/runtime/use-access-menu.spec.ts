@@ -1,9 +1,11 @@
 import { defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../config'
+import { resetAuthAdapters } from '../../modules/auth/runtime/adapters/registry'
 import { useAccessMenu } from '../../modules/auth/runtime/composables/useAccessMenu'
-import { useAccessMenuState } from '../../modules/auth/runtime/composables/useAccessMenuState'
-import { useNuvaAuthResolvers } from '../../modules/auth/runtime/composables/useNuvaAuthResolvers'
-import { useTokenAuth } from '../../modules/auth/runtime/composables/useTokenAuth'
+import { useAccessMenuState } from '../../modules/auth/runtime/internal/useAccessMenuState'
+import { useNuvaAuthResolvers } from '../../modules/auth/runtime/internal/useNuvaAuthResolvers'
+import { useTokenAuth } from '../../modules/auth/runtime/internal/useTokenAuth'
 import { normalizeAccessMenus } from '../../modules/auth/runtime/utils/access-menu'
+import { registerBetterAuthAdapter } from '../../modules/better-auth/runtime/adapter'
 
 const routes = vi.hoisted(() => ([
   { name: 'index', path: '/', meta: {} },
@@ -22,8 +24,8 @@ const betterAuthClient = vi.hoisted(() => ({
 
 mockNuxtImport('useCookie', () => () => cookieState)
 
-vi.mock('../../modules/auth/runtime/composables/useBetterAuth', () => ({
-  useBetterAuth: () => betterAuthClient,
+vi.mock('../../modules/better-auth/runtime/composables/useBetterAuthClient', () => ({
+  useBetterAuthClient: () => betterAuthClient,
 }))
 
 vi.mock('vue-router', async () => {
@@ -41,6 +43,8 @@ describe('useAccessMenu', () => {
   beforeEach(() => {
     clearNuxtState()
     cookieState.value = null
+    resetAuthAdapters()
+    registerBetterAuthAdapter()
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     betterAuthClient.organization.checkRolePermission.mockReset().mockReturnValue(true)
     useRuntimeConfig().public.nuva = {
@@ -179,7 +183,7 @@ describe('useAccessMenu', () => {
     const accessMenu = useAccessMenu()
 
     accessMenu.setMenus([{ id: 'missing', title: 'Missing', path: '/missing' }])
-    accessMenu.menus.value
+    expect(accessMenu.menus.value).toEqual([])
 
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('points to a route that does not exist'),
@@ -193,7 +197,7 @@ describe('useAccessMenu', () => {
     const accessMenu = useAccessMenu()
 
     accessMenu.setMenus([{ id: 'dashboard', title: 'Dashboard', path: '/dashboard', permissions: ['report:read'] }])
-    accessMenu.menus.value
+    expect(accessMenu.menus.value).toHaveLength(1)
 
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('permissions do not match route meta permissions'),
@@ -220,18 +224,22 @@ describe('useAccessMenu', () => {
     useRuntimeConfig().public.nuva.auth = {
       ...structuredClone(defaultNuvaPublicConfig.auth),
       provider: 'better-auth',
+      betterAuth: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.betterAuth),
+        organization: {
+          enabled: true,
+          hasPermission: true,
+          dynamicAccessControl: false,
+        },
+      },
       accessMenu: {
         ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
         provider: 'profile',
       },
       permission: {
         ...structuredClone(defaultNuvaPublicConfig.auth.permission),
-        source: 'better-auth',
-        betterAuth: {
-          hasPermission: true,
-          organization: true,
-          dynamicAccessControl: false,
-        },
+        source: 'adapter',
+        provider: 'adapter',
       },
     }
     useState('nuva:better-auth-session', () => ({

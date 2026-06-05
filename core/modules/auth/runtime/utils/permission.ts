@@ -1,8 +1,10 @@
-import type { NuvaAccessScope, NuvaDataAccess, NuvaPermissionMatchMode, NuvaPermissionSource, NuvaPermissionState } from '../../../../config'
+import type { NuvaAccessScope, NuvaDataAccess, NuvaPermissionCheckReason, NuvaPermissionCheckResult, NuvaPermissionDecision, NuvaPermissionMatchMode, NuvaPermissionSource, NuvaPermissionState } from '../../../../config'
 
 export type PermissionInput = string | string[]
 
 export type BetterAuthPermissionMap = Record<string, string[]>
+
+export type NuvaPermissionCatalog<TCatalog extends Record<string, string> = Record<string, string>> = Readonly<TCatalog>
 
 export interface PermissionLikeUser {
   roles?: string[]
@@ -20,6 +22,10 @@ export function toList(value?: PermissionInput) {
   return Array.isArray(value) ? value : [value]
 }
 
+export function defineNuvaPermissions<const TCatalog extends Record<string, string>>(catalog: TCatalog): NuvaPermissionCatalog<TCatalog> {
+  return catalog
+}
+
 export function matchList(owned: string[], required?: PermissionInput, mode: NuvaPermissionMatchMode = 'all') {
   const items = toList(required)
 
@@ -29,6 +35,36 @@ export function matchList(owned: string[], required?: PermissionInput, mode: Nuv
 
   const set = new Set(owned)
   return mode === 'all' ? items.every(item => set.has(item)) : items.some(item => set.has(item))
+}
+
+function toDecision(allowed: boolean): NuvaPermissionDecision {
+  return allowed ? 'allow' : 'deny'
+}
+
+function createCheckResult(decision: NuvaPermissionDecision, reason: NuvaPermissionCheckReason, required: string[], matched: string[], missing: string[], mode: NuvaPermissionMatchMode): NuvaPermissionCheckResult {
+  return {
+    decision,
+    reason,
+    required,
+    matched,
+    missing,
+    mode,
+  }
+}
+
+export function explainList(owned: string[], required?: PermissionInput, mode: NuvaPermissionMatchMode = 'all', reason: NuvaPermissionCheckReason = 'missing-permission') {
+  const items = toList(required)
+
+  if (!items.length) {
+    return createCheckResult('allow', 'allowed', [], [], [], mode)
+  }
+
+  const set = new Set(owned)
+  const matched = items.filter(item => set.has(item))
+  const missing = items.filter(item => !set.has(item))
+  const allowed = mode === 'all' ? missing.length === 0 : matched.length > 0
+
+  return createCheckResult(toDecision(allowed), allowed ? 'allowed' : reason, items, matched, missing, mode)
 }
 
 export function resolvePermissionState(user: PermissionLikeUser | null | undefined, fallback: NuvaPermissionState, source: NuvaPermissionSource): NuvaPermissionState {
@@ -65,6 +101,14 @@ export function hasScope(scope: NuvaAccessScope | undefined, required?: Permissi
     .map(([key]) => key))
 
   return mode === 'all' ? items.every(item => keys.has(item)) : items.some(item => keys.has(item))
+}
+
+export function explainScope(scope: NuvaAccessScope | undefined, required?: PermissionInput, mode: NuvaPermissionMatchMode = 'all') {
+  const keys = Object.entries(scope || {})
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .map(([key]) => key)
+
+  return explainList(keys, required, mode, 'missing-scope')
 }
 
 export function toResourcePermission(resource: string, action?: string) {

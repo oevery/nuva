@@ -1,6 +1,6 @@
 import type { NuvaPublicConfig, NuvaResolvedConfig } from '../../../../config'
 import { parseNuvaRemoteRequest } from '../../../../config'
-import { useNuvaAuthResolvers } from '../../../auth/runtime/composables/useNuvaAuthResolvers'
+import { useNuvaAuthResolvers } from '../../../auth/runtime/internal/useNuvaAuthResolvers'
 
 export function useNuvaConfig() {
   const config = useRuntimeConfig().public.nuva as NuvaPublicConfig

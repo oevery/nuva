@@ -1,5 +1,6 @@
 import { defaultNuvaPermissionConfig } from '../../config'
-import { hasPermissionState, hasScope, matchList, resolvePermissionState, toBetterAuthPermissions, toList, toResourcePermission } from '../../modules/auth/runtime/utils/permission'
+import { validateAccessMenus } from '../../modules/auth/runtime/utils/access-menu'
+import { defineNuvaPermissions, explainList, explainScope, hasPermissionState, hasScope, matchList, resolvePermissionState, toBetterAuthPermissions, toList, toResourcePermission } from '../../modules/auth/runtime/utils/permission'
 
 describe('permission utils', () => {
   it('normalizes scalar and array permission inputs', () => {
@@ -46,5 +47,58 @@ describe('permission utils', () => {
 
     expect(toBetterAuthPermissions('invalid')).toBeNull()
     expect(toResourcePermission('dashboard', 'view')).toBe('dashboard:view')
+  })
+
+  it('defines typed permission catalogs without changing runtime values', () => {
+    const permissions = defineNuvaPermissions({
+      profileUpdate: 'profile:update',
+      reportRead: 'report:read',
+    })
+
+    expect(permissions.profileUpdate).toBe('profile:update')
+    expect(permissions.reportRead).toBe('report:read')
+  })
+
+  it('explains permission and scope decisions for diagnostics', () => {
+    expect(explainList(['dashboard:view'], ['dashboard:view', 'report:read'], 'all')).toEqual({
+      decision: 'deny',
+      reason: 'missing-permission',
+      required: ['dashboard:view', 'report:read'],
+      matched: ['dashboard:view'],
+      missing: ['report:read'],
+      mode: 'all',
+    })
+
+    expect(explainScope({ organizationId: 'org-1' }, ['organizationId', 'tenantId'], 'any')).toMatchObject({
+      decision: 'allow',
+      reason: 'allowed',
+      matched: ['organizationId'],
+      missing: ['tenantId'],
+    })
+  })
+
+  it('validates access menu route and permission consistency', () => {
+    const issues = validateAccessMenus([
+      { id: 'dashboard', title: 'Dashboard', path: '/dashboard', permissions: ['report:read'] },
+      { id: 'missing', title: 'Missing', path: '/missing' },
+    ], [
+      { name: 'dashboard', path: '/dashboard', meta: { auth: { permissions: ['dashboard:view'] } } },
+    ], {
+      routePrune: true,
+      strictRoute: true,
+    })
+
+    expect(issues).toEqual([
+      expect.objectContaining({
+        type: 'access-mismatch',
+        field: 'permissions',
+        menuAccess: ['report:read'],
+        routeAccess: ['dashboard:view'],
+      }),
+      expect.objectContaining({
+        type: 'missing-route',
+        menu: expect.objectContaining({ id: 'missing' }),
+      }),
+    ])
   })
 })

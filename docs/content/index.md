@@ -20,7 +20,7 @@ sections:
         description: 基于 alova 统一处理 baseURL、响应解包、成功码和请求 hooks，业务 API 可以直接按领域组织。
         icon: i-lucide-route
       - title: 认证能力按需启用
-        description: 先接入登录态和路由保护，需要完整认证协议时再切到 Better Auth fullstack。
+        description: 先接入登录态和路由保护，需要完整认证协议时再启用 Better Auth 可选模块。
         icon: i-lucide-shield
       - title: 类型与校验统一复用
         description: `shared` 目录集中维护接口类型和 valibot schema，前端表单和服务端接口共用同一份规则。
@@ -49,7 +49,7 @@ sections:
         icon: i-lucide-route
         to: /request
       - title: 认证与权限
-        description: 接入登录态、页面保护和 401 处理，再决定是否切到 Better Auth。
+        description: 接入登录态、页面保护和 401 处理，再决定是否启用 Better Auth。
         icon: i-lucide-shield
         to: /auth
       - title: 内置能力

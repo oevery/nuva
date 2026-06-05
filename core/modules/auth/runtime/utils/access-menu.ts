@@ -2,6 +2,18 @@ import type { NuvaAccessMenuItem, NuvaPermissionMatchMode } from '../../../../co
 
 type MenuInput = Record<string, unknown>
 
+export interface NuvaAccessMenuValidationIssue {
+  type: 'missing-route' | 'access-mismatch'
+  field?: 'roles' | 'permissions' | 'scopes'
+  menu: NuvaAccessMenuItem
+  route?: {
+    name?: string | symbol | null
+    path: string
+  }
+  menuAccess?: string[]
+  routeAccess?: string[]
+}
+
 export function toAccessMenuList(value: unknown) {
   if (!value) {
     return []
@@ -98,4 +110,92 @@ export function normalizeAccessMenus(value: unknown): NuvaAccessMenuItem[] {
         meta: item.meta && typeof item.meta === 'object' ? item.meta as Record<string, unknown> : undefined,
       }
     })
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {}
+}
+
+function toSortedAccessList(value?: string[]) {
+  return [...(value || [])].sort()
+}
+
+function isSameAccessList(left?: string[], right?: string[]) {
+  const leftList = toSortedAccessList(left)
+  const rightList = toSortedAccessList(right)
+
+  return leftList.length === rightList.length && leftList.every((item, index) => item === rightList[index])
+}
+
+function isRouteMenu(item: NuvaAccessMenuItem) {
+  return !item.external && (!item.type || item.type === 'route') && (!!item.path || !!item.name)
+}
+
+function getRouteAccess(route?: { meta?: unknown } | null) {
+  const meta = toRecord(route?.meta)
+  const auth = toRecord(meta.auth)
+
+  return {
+    roles: toAccessMenuList(auth.roles || meta.roles),
+    permissions: toAccessMenuList(auth.permissions || meta.permissions),
+    scopes: toAccessMenuList(auth.scopes || meta.scopes),
+  }
+}
+
+function findRoute(item: NuvaAccessMenuItem, routes: Array<{ name?: string | symbol | null, path: string, meta?: unknown }>) {
+  if (item.name) {
+    const byName = routes.find(route => String(route.name || '') === item.name)
+
+    if (byName) {
+      return byName
+    }
+  }
+
+  return item.path ? routes.find(route => route.path === item.path) || null : null
+}
+
+export function validateAccessMenus(items: NuvaAccessMenuItem[], routes: Array<{ name?: string | symbol | null, path: string, meta?: unknown }>, options: { strictRoute?: boolean, routePrune?: boolean } = {}): NuvaAccessMenuValidationIssue[] {
+  const issues: NuvaAccessMenuValidationIssue[] = []
+
+  for (const item of items) {
+    const route = findRoute(item, routes)
+
+    if (options.routePrune && isRouteMenu(item) && !route) {
+      issues.push({
+        type: 'missing-route',
+        menu: item,
+      })
+    }
+
+    if (route) {
+      const routeAccess = getRouteAccess(route)
+
+      for (const field of ['roles', 'permissions', 'scopes'] as const) {
+        const menuList = toSortedAccessList(item[field])
+        const routeList = toSortedAccessList(routeAccess[field])
+
+        if (menuList.length || (routeList.length && !options.strictRoute)) {
+          if (!isSameAccessList(menuList, routeList)) {
+            issues.push({
+              type: 'access-mismatch',
+              field,
+              menu: item,
+              route: {
+                name: route.name,
+                path: route.path,
+              },
+              menuAccess: menuList,
+              routeAccess: routeList,
+            })
+          }
+        }
+      }
+    }
+
+    if (item.children?.length) {
+      issues.push(...validateAccessMenus(item.children, routes, options))
+    }
+  }
+
+  return issues
 }

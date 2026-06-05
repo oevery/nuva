@@ -1,5 +1,6 @@
 import type { Method } from 'alova'
 import type { NuvaPublicConfig } from '../../../config'
+import { navigateTo, useCookie, useRequestHeaders } from 'nuxt/app'
 import { useAuth } from '../../../modules/auth/runtime/composables/useAuth'
 import { isSameOriginURL, resolveNuxtBaseURL } from './config'
 import { handleHttpResponse } from './response'
@@ -77,6 +78,10 @@ async function notifyHttpError(error: unknown, method: Method | undefined, optio
 
 export async function handleAuthHttpError(error: unknown, config: NuvaPublicConfig, method?: Method, options: DefaultHttpRequestHooksOptions = {}) {
   const status = getHttpErrorStatus(error)
+
+  if (status === 401 && method?.meta?.unauthorizedBehavior === 'throw') {
+    throw error
+  }
 
   if (config.auth.enabled && status === 401) {
     const auth = useAuth()

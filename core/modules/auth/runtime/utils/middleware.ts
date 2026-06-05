@@ -1,10 +1,10 @@
 import type { RouteLocationNormalized } from 'vue-router'
 import type { NuvaPermissionMatchMode } from '../../../../config'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
-import { useBetterAuthSession } from '../composables/useBetterAuthSession'
+import { useAuthAdapter } from '../adapters/registry'
 import { usePermission } from '../composables/usePermission'
-import { useTokenAuth } from '../composables/useTokenAuth'
-import { useAuthRedirect } from './redirect'
+import { useAuthRedirect } from '../internal/redirect'
+import { useTokenAuth } from '../internal/useTokenAuth'
 
 interface RouteAccessMeta {
   roles?: string[]
@@ -14,6 +14,8 @@ interface RouteAccessMeta {
   permissionMode?: NuvaPermissionMatchMode
   forbiddenPath?: string
 }
+
+const warnedPublicRouteConflicts = new Set<string>()
 
 function isPublicRoute(path: string, publicRoutes: string[]) {
   return publicRoutes.some((route) => {
@@ -49,10 +51,13 @@ function getRouteAccessMeta(to: RouteLocationNormalized) {
   }
 }
 
-async function ensureBetterAuthSession() {
-  const session = useBetterAuthSession()
-  await session.refresh()
-  return session.isAuthenticated.value
+function warnPublicRouteConflict(path: string) {
+  if (import.meta.env.PROD || warnedPublicRouteConflicts.has(path)) {
+    return
+  }
+
+  warnedPublicRouteConflicts.add(path)
+  console.warn(`[nuva/auth] publicRoutes contains "${path}" but the route declares auth or access metadata. The explicit route metadata will be protected.`)
 }
 
 export function createAuthMiddleware() {
@@ -70,7 +75,13 @@ export function createAuthMiddleware() {
     const accessMeta = getRouteAccessMeta(to)
     const hasAccessMeta = !!(accessMeta.roles?.length || accessMeta.permissions?.length || accessMeta.scopes?.length)
 
-    if (isPublicRoute(to.path, authConfig.publicRoutes) && !hasAccessMeta) {
+    const publicRoute = isPublicRoute(to.path, authConfig.publicRoutes)
+
+    if (publicRoute && (accessMeta.requiresAuth || hasAccessMeta)) {
+      warnPublicRouteConflict(to.path)
+    }
+
+    if (publicRoute && !accessMeta.requiresAuth && !hasAccessMeta) {
       return
     }
 
@@ -84,8 +95,13 @@ export function createAuthMiddleware() {
     const permission = usePermission()
     const { toLogin } = useAuthRedirect()
 
-    if (authConfig.provider === 'better-auth') {
-      if (!(await ensureBetterAuthSession())) {
+    if (authConfig.provider !== 'token') {
+      const adapter = useAuthAdapter(authConfig.provider)
+      const authenticated = adapter.ensureAuthenticated
+        ? await adapter.ensureAuthenticated()
+        : adapter.isAuthenticated.value
+
+      if (!authenticated) {
         return toLogin()
       }
     }

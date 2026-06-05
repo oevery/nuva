@@ -1,18 +1,11 @@
+import type { HttpUnauthorizedBehavior } from '../../../../app/types/alova'
 import type { NuvaAccessMenuItem, NuvaAccessMenuResolver, NuvaPermissionResolver, NuvaPermissionState, NuvaProfileResolver, NuvaRemoteRequestConfig, NuvaRemoteRequestMethod, NuvaRemoteResolverContext, NuvaResolvedAuthConfig } from '../../../../config'
-import { handleHttpResponse } from '../../../../app/utils/http/response'
+import { useRequestURL } from 'nuxt/app'
+import { useHttpClient } from '../../../../app/composables/useHttpClient'
 import { resolvePermissionState } from './permission'
 
 function resolveRemoteRequestURL(url: string) {
-  const baseURL = useRuntimeConfig().public.nuva?.api?.baseURL
-
-  if (typeof baseURL !== 'string' || !baseURL.startsWith('/') || !url.startsWith('/')) {
-    return url
-  }
-
-  const normalizedBaseURL = baseURL.replace(/\/+$/, '') || '/'
-  const includesBaseURL = url === normalizedBaseURL || url.startsWith(`${normalizedBaseURL}/`)
-
-  if (!includesBaseURL) {
+  if (!url.startsWith('/')) {
     return url
   }
 
@@ -25,55 +18,29 @@ function resolveRemoteRequestURL(url: string) {
     : url
 }
 
-function appendRequestParams(url: string, params: NuvaRemoteRequestConfig['params']) {
-  if (!params) {
-    return url
-  }
-
-  const targetURL = new URL(url)
-  const searchParams = typeof params === 'string'
-    ? new URLSearchParams(params)
-    : new URLSearchParams(params as Record<string, string>)
-
-  searchParams.forEach((value, key) => {
-    targetURL.searchParams.set(key, value)
-  })
-
-  return targetURL.toString()
+function resolveErrorSilent(meta: NuvaRemoteRequestConfig['meta']) {
+  return typeof meta?.errorSilent === 'boolean' ? meta.errorSilent : true
 }
 
-async function executeServerRemoteRequest(config: NuvaResolvedAuthConfig, request: NuvaRemoteRequestConfig, method: NuvaRemoteRequestMethod) {
-  const url = appendRequestParams(resolveRemoteRequestURL(request.url), request.params)
-  const apiConfig = useRuntimeConfig().public.nuva.api
-  const requestHeaders = useRequestHeaders(['cookie'])
-  const headers = new Headers(request.headers)
-  const cookieToken = useCookie<string | null>(config.token.cookieName)
-
-  if (requestHeaders.cookie) {
-    headers.set('cookie', requestHeaders.cookie)
-  }
-
-  if (!request.meta?.ignoreToken && cookieToken.value) {
-    headers.set(config.token.header, config.token.prefix ? `${config.token.prefix} ${cookieToken.value}` : cookieToken.value)
-  }
-
-  if (request.data && !headers.has('content-type')) {
-    headers.set('content-type', 'application/json')
-  }
-
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: method === 'GET' ? undefined : request.data ? JSON.stringify(request.data) : undefined,
-  })
-
-  return handleHttpResponse(response, {
-    config: { headers: Object.fromEntries(headers.entries()) },
-    meta: request.meta || {},
-  } as any, apiConfig)
+function resolveUnauthorizedBehavior(meta: NuvaRemoteRequestConfig['meta']): HttpUnauthorizedBehavior {
+  return meta?.unauthorizedBehavior === 'redirect' || meta?.unauthorizedBehavior === 'throw'
+    ? meta.unauthorizedBehavior
+    : 'throw'
 }
 
-async function executeRemoteRequest<T>(config: NuvaResolvedAuthConfig, request: NuvaRemoteRequestConfig | null | undefined) {
+function createAuthRemoteRequestConfig(request: NuvaRemoteRequestConfig) {
+  return {
+    params: request.params,
+    headers: request.headers,
+    meta: {
+      ...request.meta,
+      errorSilent: resolveErrorSilent(request.meta),
+      unauthorizedBehavior: resolveUnauthorizedBehavior(request.meta),
+    },
+  }
+}
+
+async function executeRemoteRequest<T>(request: NuvaRemoteRequestConfig | null | undefined) {
   if (!request?.url) {
     throw createError({
       statusCode: 500,
@@ -83,17 +50,8 @@ async function executeRemoteRequest<T>(config: NuvaResolvedAuthConfig, request: 
 
   const method = (request.method || 'GET') as NuvaRemoteRequestMethod
   const url = resolveRemoteRequestURL(request.url)
-
-  if (import.meta.server) {
-    return executeServerRemoteRequest(config, request, method)
-  }
-
   const http = useHttpClient()
-  const requestConfig = {
-    params: request.params,
-    headers: request.headers,
-    meta: request.meta,
-  }
+  const requestConfig = createAuthRemoteRequestConfig(request)
 
   switch (method) {
     case 'POST':
@@ -113,7 +71,7 @@ async function createResolverContext(config: NuvaResolvedAuthConfig, request: Nu
   return {
     request,
     config,
-    requestWith: async <T>(nextRequest = request) => executeRemoteRequest<T>(config, nextRequest),
+    requestWith: async <T>(nextRequest = request) => executeRemoteRequest<T>(nextRequest),
   }
 }
 
@@ -122,7 +80,7 @@ export async function fetchRemoteUser<TUser>(config: NuvaResolvedAuthConfig, req
     return resolver(await createResolverContext(config, request))
   }
 
-  return executeRemoteRequest<TUser>(config, request)
+  return executeRemoteRequest<TUser>(request)
 }
 
 export async function fetchRemotePermission(config: NuvaResolvedAuthConfig, request: NuvaRemoteRequestConfig | null, resolver: NuvaPermissionResolver | null) {
@@ -130,7 +88,7 @@ export async function fetchRemotePermission(config: NuvaResolvedAuthConfig, requ
     return resolver(await createResolverContext(config, request))
   }
 
-  return executeRemoteRequest<NuvaPermissionState>(config, request)
+  return executeRemoteRequest<NuvaPermissionState>(request)
 }
 
 export async function fetchRemoteAccessMenu(config: NuvaResolvedAuthConfig, request: NuvaRemoteRequestConfig | null, resolver: NuvaAccessMenuResolver | null) {
@@ -138,7 +96,7 @@ export async function fetchRemoteAccessMenu(config: NuvaResolvedAuthConfig, requ
     return resolver(await createResolverContext(config, request))
   }
 
-  return executeRemoteRequest<NuvaAccessMenuItem[]>(config, request)
+  return executeRemoteRequest<NuvaAccessMenuItem[]>(request)
 }
 
 export function toPermissionState(value: NuvaPermissionState | null | undefined, config: NuvaResolvedAuthConfig) {

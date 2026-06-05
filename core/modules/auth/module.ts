@@ -1,17 +1,28 @@
-import type { NuvaAuthConfig, NuvaAuthModuleOptions } from '../../config'
-import { addImports, addRouteMiddleware, addServerHandler, addServerTemplate, createResolver, defineNuxtModule, installModule } from '@nuxt/kit'
+import type { NuvaAuthConfig, NuvaAuthModuleOptions, NuvaPermissionConfig, NuvaPermissionProvider, NuvaPermissionSource, NuvaPublicConfig } from '../../config'
+import { addImports, addRouteMiddleware, createResolver, defineNuxtModule, installModule } from '@nuxt/kit'
 import { defu } from 'defu'
-import { defaultNuvaAuthConfig } from '../../config'
+import { defaultNuvaAuthConfig, defaultNuvaPublicConfig } from '../../config'
 
-function normalizeBasePath(basePath: string) {
-  const trimmed = basePath.trim()
-
-  if (!trimmed) {
-    return defaultNuvaAuthConfig.betterAuth.basePath
+function resolvePermissionSource(provider?: NuvaPermissionProvider): NuvaPermissionSource | undefined {
+  if (!provider) {
+    return
   }
 
-  const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
-  return normalized === '/' ? normalized : normalized.replace(/\/+$/, '')
+  if (provider === 'profile' || provider === 'endpoint' || provider === 'remote') {
+    return 'remote'
+  }
+
+  return provider
+}
+
+function resolvePermissionProvider(source: NuvaPermissionSource): NuvaPermissionProvider {
+  return source === 'remote' ? 'profile' : source
+}
+
+function normalizePermissionConfig(permission: NuvaPermissionConfig) {
+  const source = resolvePermissionSource(permission.provider) || permission.source
+  permission.source = source
+  permission.provider = permission.provider || resolvePermissionProvider(source)
 }
 
 export default defineNuxtModule<NuvaAuthModuleOptions>({
@@ -22,20 +33,35 @@ export default defineNuxtModule<NuvaAuthModuleOptions>({
   defaults: {},
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
+    const { adapter, ...runtimeAuthOptions } = options as NuvaAuthModuleOptions & { adapter?: string }
+    const requestedProvider = runtimeAuthOptions.provider
+
     await installModule(resolver.resolve('../nuva/module'), {
-      auth: options,
+      auth: defu(runtimeAuthOptions, { enabled: true }),
     })
-    const currentPublicConfig = nuxt.options.runtimeConfig.public.nuva || {}
-    const authConfig = defu(options, currentPublicConfig.auth || {}, defaultNuvaAuthConfig) as NuvaAuthConfig
+    const currentPublicConfig = (nuxt.options.runtimeConfig.public.nuva || {}) as Partial<NuvaPublicConfig>
+    const authConfig = defu({ enabled: true }, runtimeAuthOptions, currentPublicConfig.auth || {}, defaultNuvaAuthConfig) as NuvaAuthConfig
+    normalizePermissionConfig(authConfig.permission)
+    authConfig.publicRoutes = Array.from(new Set([
+      authConfig.loginPath,
+      ...(authConfig.publicRoutes || []),
+    ]))
+    ;(nuxt.options.runtimeConfig.public as Record<string, unknown>).nuva = {
+      ...defaultNuvaPublicConfig,
+      ...currentPublicConfig,
+      auth: authConfig,
+    } satisfies NuvaPublicConfig
+
+    const provider = requestedProvider || authConfig.provider
+
+    if (provider !== 'token' && adapter !== provider) {
+      throw new Error(`Nuva auth provider "${provider}" requires its adapter module. Use the provider module instead of @oevery/nuva/auth, or install @oevery/nuva/auth from that adapter module.`)
+    }
 
     addImports([
       {
         name: 'useAuth',
         from: resolver.resolve('./runtime/composables/useAuth'),
-      },
-      {
-        name: 'useBetterAuth',
-        from: resolver.resolve('./runtime/composables/useBetterAuth'),
       },
       {
         name: 'usePermission',
@@ -46,12 +72,8 @@ export default defineNuxtModule<NuvaAuthModuleOptions>({
         from: resolver.resolve('./runtime/composables/useAccessMenu'),
       },
       {
-        name: 'useNuvaAuthResolvers',
-        from: resolver.resolve('./runtime/composables/useNuvaAuthResolvers'),
-      },
-      {
-        name: 'useBetterAuthSession',
-        from: resolver.resolve('./runtime/composables/useBetterAuthSession'),
+        name: 'useTokenAuthClient',
+        from: resolver.resolve('./runtime/composables/useTokenAuthClient'),
       },
     ])
 
@@ -59,41 +81,6 @@ export default defineNuxtModule<NuvaAuthModuleOptions>({
       name: 'auth',
       path: resolver.resolve('./runtime/middleware/auth'),
       global: true,
-    })
-
-    if (authConfig.mode !== 'fullstack') {
-      return
-    }
-
-    const serverAuthImport = authConfig.betterAuth.serverAuthImport
-    const basePath = normalizeBasePath(authConfig.betterAuth.basePath)
-
-    if (!serverAuthImport) {
-      throw new Error('nuvaAuth.betterAuth.serverAuthImport is required in fullstack mode')
-    }
-
-    const handler = addServerTemplate({
-      filename: '#nuva-auth/better-auth-handler.mjs',
-      getContents: () => `import { createError, defineEventHandler, toWebRequest } from 'h3'
-
-const authModulePromise = import('${serverAuthImport}')
-
-export default defineEventHandler(async (event) => {
-  const authModule = await authModulePromise
-  const auth = authModule.auth || authModule.default
-
-  if (!auth?.handler) {
-    throw createError({ statusCode: 500, statusMessage: 'Better Auth instance is not configured' })
-  }
-
-  return auth.handler(toWebRequest(event))
-})
-`,
-    })
-
-    addServerHandler({
-      route: `${basePath}/**`,
-      handler: handler.filename,
     })
   },
 })

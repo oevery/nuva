@@ -22,6 +22,10 @@ export const auth = {
       return Response.json({ role: 'admin' })
     }
 
+    if (url.pathname === '/api/auth/organization/has-permission') {
+      return Response.json({ data: true })
+    }
+
     return Response.json({
       ok: true,
       path: url.pathname,

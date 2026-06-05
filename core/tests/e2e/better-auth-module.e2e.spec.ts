@@ -15,7 +15,7 @@ describe('better-auth module', () => {
     const config = await fetchJsonWithRetry('/api/runtime-config')
 
     expect(config.auth.provider).toBe('better-auth')
-    expect(config.auth.mode).toBe('fullstack')
+    expect(config.auth.provider).toBe('better-auth')
     expect(config.auth.betterAuth.basePath).toBe('/api/auth')
 
     const response = await fetchJsonWithRetry('/api/auth/session')
@@ -60,5 +60,28 @@ describe('better-auth module', () => {
 
     expect(adminResponse.status).toBe(200)
     expect(adminHtml).toContain('better-auth-admin')
+  })
+
+  it('protects server API routes with the better-auth server adapter', async () => {
+    const unauthorized = await fetchWithRetry('/api/protected-permission', {
+      redirect: 'manual',
+    })
+
+    expect(unauthorized.status).toBe(401)
+
+    const authorized = await fetchJsonWithRetry('/api/protected-permission', {
+      headers: {
+        cookie: 'better-session=valid',
+      },
+    })
+
+    expect(authorized).toEqual({
+      userId: 'user-1',
+      roles: ['admin'],
+      scope: {
+        organizationId: 'org-1',
+        organizationSlug: 'acme',
+      },
+    })
   })
 })

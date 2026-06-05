@@ -1,4 +1,5 @@
 import type { NuvaAuthConfig, NuvaConfigFile, NuvaModuleOptions, NuvaPermissionConfig, NuvaPermissionProvider, NuvaPermissionSource, NuvaRemoteAccessMenuOptions, NuvaRemotePermissionOptions, NuvaRemoteRequestConfig } from '../../config'
+import process from 'node:process'
 import { addImports, addPluginTemplate, createResolver, defineNuxtModule, importModule, resolvePath } from '@nuxt/kit'
 import { defu } from 'defu'
 import { defaultNuvaAuthConfig, defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../config'
@@ -80,6 +81,10 @@ function normalizeRemoteAccessMenuOptions(remote: NuvaRemoteAccessMenuOptions) {
 }
 
 function normalizePermissionConfig(permission: NuvaPermissionConfig) {
+  if ('betterAuth' in permission) {
+    throw new Error('auth.permission.betterAuth has been removed. Configure Better Auth permissions with auth.betterAuth.organization instead.')
+  }
+
   const source = resolvePermissionSource(permission.provider) || permission.source
   permission.source = source
   permission.provider = permission.provider || resolvePermissionProvider(source)
@@ -93,22 +98,50 @@ function normalizePermissionConfig(permission: NuvaPermissionConfig) {
     permission.remote.profileEndpoint = ''
     permission.remote.profile = ''
   }
+}
 
-  if (permission.betterAuth.hasPermission || permission.betterAuth.dynamicAccessControl) {
-    permission.betterAuth.organization = true
+function normalizeBetterAuthConfig(authConfig: NuvaAuthConfig) {
+  const { betterAuth, permission } = authConfig
+  const usesBetterAuthOrganizationConfig = betterAuth.organization.enabled || betterAuth.organization.hasPermission || betterAuth.organization.dynamicAccessControl
+
+  if (usesBetterAuthOrganizationConfig) {
+    authConfig.provider = 'better-auth'
+    betterAuth.organization.enabled = true
+    permission.source = 'adapter'
+    permission.provider = 'adapter'
   }
 }
 
 function normalizeAuthConfig(authConfig: NuvaAuthConfig) {
-  normalizePermissionConfig(authConfig.permission)
   authConfig.betterAuth.basePath = normalizeBasePath(authConfig.betterAuth.basePath)
 
-  if (authConfig.preset && authConfig.enabled === defaultNuvaAuthConfig.enabled) {
-    authConfig.enabled = true
+  normalizePermissionConfig(authConfig.permission)
+  normalizeBetterAuthConfig(authConfig)
+}
+
+function hasLocalPermissions(permission: NuvaPermissionConfig) {
+  return !!(
+    permission.local.roles.length
+    || permission.local.permissions.length
+    || Object.keys(permission.local.scope || {}).length
+  )
+}
+
+function assertAuthSecurityConfig(authConfig: NuvaAuthConfig) {
+  if (process.env.NODE_ENV !== 'production' || !authConfig.enabled) {
+    return
   }
 
-  if (authConfig.provider === 'better-auth') {
-    authConfig.mode = 'fullstack'
+  if (authConfig.permission.source === 'local') {
+    console.warn('[nuva/auth] auth.permission.source is "local" in production. Use remote, adapter, or ensure static permissions are intentional.')
+  }
+
+  if (authConfig.permission.source === 'hybrid' && hasLocalPermissions(authConfig.permission)) {
+    console.warn('[nuva/auth] auth.permission.source is "hybrid" with local fallback permissions in production. Ensure fallback permissions cannot bypass server-side authorization.')
+  }
+
+  if (authConfig.permission.remote.profile.includes('/demo-auth') || authConfig.permission.remote.permission.includes('/demo-auth') || authConfig.accessMenu.remote.menu.includes('/demo-auth')) {
+    throw new Error('[nuva/auth] demo auth endpoints cannot be used in production. Replace /demo-auth endpoints with real authentication and permission APIs before deployment.')
   }
 }
 
@@ -214,6 +247,7 @@ export default defineNuxtModule<NuvaModuleOptions>({
     )
 
     normalizeAuthConfig(authConfig)
+    assertAuthSecurityConfig(authConfig)
 
     authConfig.permission.remote.profileResolver = !!profileResolverImport
       && isRemotePermissionSource(authConfig.permission.source)

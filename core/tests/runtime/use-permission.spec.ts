@@ -1,6 +1,8 @@
 import { defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../config'
-import { useNuvaAuthResolvers } from '../../modules/auth/runtime/composables/useNuvaAuthResolvers'
+import { resetAuthAdapters } from '../../modules/auth/runtime/adapters/registry'
 import { usePermission } from '../../modules/auth/runtime/composables/usePermission'
+import { useNuvaAuthResolvers } from '../../modules/auth/runtime/internal/useNuvaAuthResolvers'
+import { clearBetterAuthPermissionCache, registerBetterAuthAdapter } from '../../modules/better-auth/runtime/adapter'
 
 const betterAuthClient = vi.hoisted(() => ({
   organization: {
@@ -9,8 +11,8 @@ const betterAuthClient = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('../../modules/auth/runtime/composables/useBetterAuth', () => ({
-  useBetterAuth: () => betterAuthClient,
+vi.mock('../../modules/better-auth/runtime/composables/useBetterAuthClient', () => ({
+  useBetterAuthClient: () => betterAuthClient,
 }))
 
 const cookieState = ref<string | null>(null)
@@ -21,6 +23,9 @@ describe('usePermission', () => {
   beforeEach(() => {
     clearNuxtState()
     cookieState.value = null
+    resetAuthAdapters()
+    registerBetterAuthAdapter()
+    clearBetterAuthPermissionCache()
     betterAuthClient.organization.checkRolePermission.mockReset().mockReturnValue(true)
     betterAuthClient.organization.hasPermission.mockReset().mockResolvedValue({ data: true })
     useRuntimeConfig().public.nuva = {
@@ -100,6 +105,34 @@ describe('usePermission', () => {
     expect(permission.hasScope('projectId')).toBe(true)
   })
 
+  it('ensures remote permission before async permission checks', async () => {
+    useRuntimeConfig().public.nuva.auth.permission = {
+      ...structuredClone(defaultNuvaPublicConfig.auth.permission),
+      source: 'remote',
+      remote: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.permission.remote),
+        permission: serializeNuvaRemoteRequest({ url: '/api/permission' }),
+        permissionResolver: true,
+        cacheMaxAge: 60_000,
+      },
+    }
+    const permissionResolver = vi.fn(async () => ({
+      roles: ['editor'],
+      permissions: ['article:update', 'article:publish'],
+      scope: {},
+      dataAccess: { type: 'self' as const },
+    }))
+    useNuvaAuthResolvers().value.permission = permissionResolver
+
+    const permission = usePermission()
+
+    expect(permission.can('article:update')).toBe(false)
+    await expect(permission.canAsync('article:update')).resolves.toBe(true)
+    await expect(permission.anyAsync(['missing', 'article:publish'])).resolves.toBe(true)
+    await expect(permission.allAsync(['article:update', 'article:publish'])).resolves.toBe(true)
+    expect(permissionResolver).toHaveBeenCalledTimes(1)
+  })
+
   it('uses local permission as hybrid fallback before remote refresh updates state', async () => {
     useRuntimeConfig().public.nuva.auth.permission = {
       ...structuredClone(defaultNuvaPublicConfig.auth.permission),
@@ -142,14 +175,18 @@ describe('usePermission', () => {
     useRuntimeConfig().public.nuva.auth = {
       ...structuredClone(defaultNuvaPublicConfig.auth),
       provider: 'better-auth',
-      permission: {
-        ...structuredClone(defaultNuvaPublicConfig.auth.permission),
-        source: 'better-auth',
-        betterAuth: {
+      betterAuth: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.betterAuth),
+        organization: {
+          enabled: true,
           hasPermission: true,
-          organization: true,
           dynamicAccessControl: false,
         },
+      },
+      permission: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.permission),
+        source: 'adapter',
+        provider: 'adapter',
       },
     }
     useState('nuva:better-auth-session', () => ({
@@ -167,7 +204,7 @@ describe('usePermission', () => {
     const permission = usePermission()
 
     expect(permission.ready.value).toBe(true)
-    expect(permission.source.value).toBe('better-auth')
+    expect(permission.source.value).toBe('adapter')
     expect(permission.roles.value).toEqual(['owner'])
     expect(permission.scope.value).toEqual({ organizationId: 'org-1', organizationSlug: 'acme' })
     expect(permission.canState('project:read')).toBe('allow')
@@ -179,11 +216,69 @@ describe('usePermission', () => {
     await expect(permission.canAsync('project:update')).resolves.toBe(true)
     expect(betterAuthClient.organization.hasPermission).toHaveBeenCalledWith({
       permissions: { project: ['update'] },
+      context: undefined,
     })
 
     await expect(permission.allAsync(['project:read', 'project:update'])).resolves.toBe(true)
     expect(betterAuthClient.organization.hasPermission).toHaveBeenLastCalledWith({
       permissions: { project: ['read', 'update'] },
+      context: undefined,
+    })
+  })
+
+  it('passes context to better-auth dynamic checks and caches duplicate requests briefly', async () => {
+    useRuntimeConfig().public.nuva.auth = {
+      ...structuredClone(defaultNuvaPublicConfig.auth),
+      provider: 'better-auth',
+      betterAuth: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.betterAuth),
+        organization: {
+          enabled: true,
+          hasPermission: true,
+          dynamicAccessControl: true,
+        },
+      },
+      permission: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.permission),
+        source: 'adapter',
+        provider: 'adapter',
+      },
+    }
+    useState('nuva:better-auth-session', () => ({
+      data: null,
+      activeOrganization: null,
+      activeMember: null,
+      ready: false,
+    })).value = {
+      data: { user: { id: 'user-1' } },
+      activeOrganization: { id: 'org-1' },
+      activeMember: { role: 'owner' },
+      ready: true,
+    }
+    const context = { target: { projectId: 'project-1' } }
+    const permission = usePermission()
+
+    await expect(permission.canAsync('project:update', context)).resolves.toBe(true)
+    await expect(permission.canAsync('project:update', context)).resolves.toBe(true)
+
+    expect(betterAuthClient.organization.hasPermission).toHaveBeenCalledTimes(1)
+    expect(betterAuthClient.organization.hasPermission).toHaveBeenCalledWith({
+      permissions: { project: ['update'] },
+      context,
+    })
+  })
+
+  it('returns diagnostic explanations for local permission state', () => {
+    const permission = usePermission()
+
+    expect(permission.explain(['dashboard:view', 'missing'], 'all')).toMatchObject({
+      decision: 'deny',
+      missing: ['missing'],
+    })
+    expect(permission.explainRole('admin')).toMatchObject({ decision: 'allow' })
+    expect(permission.explainScope('tenantId')).toMatchObject({
+      decision: 'deny',
+      reason: 'missing-scope',
     })
   })
 })

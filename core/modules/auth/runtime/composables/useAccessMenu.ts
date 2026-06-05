@@ -2,10 +2,10 @@ import type { RouteRecordNormalized } from 'vue-router'
 import type { NuvaAccessMenuItem, NuvaPermissionMatchMode } from '../../../../config'
 import { useRouter } from 'vue-router'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
-import { firstAccessMenuNumber, firstAccessMenuString, normalizeAccessMenus, toAccessMenuList } from '../utils/access-menu'
+import { useAccessMenuState } from '../internal/useAccessMenuState'
+import { useNuvaAuthResolvers } from '../internal/useNuvaAuthResolvers'
+import { firstAccessMenuNumber, firstAccessMenuString, normalizeAccessMenus, toAccessMenuList, validateAccessMenus } from '../utils/access-menu'
 import { fetchRemoteAccessMenu } from '../utils/remote'
-import { useAccessMenuState } from './useAccessMenuState'
-import { useNuvaAuthResolvers } from './useNuvaAuthResolvers'
 import { usePermission } from './usePermission'
 
 type AccessCheck = Pick<NuvaAccessMenuItem, 'roles' | 'permissions' | 'scopes' | 'roleMode' | 'permissionMode'>
@@ -119,17 +119,6 @@ function describeMenuItem(item: NuvaAccessMenuItem) {
   return item.id || item.name || item.path || item.title || 'unknown'
 }
 
-function toSortedAccessList(value?: string[]) {
-  return [...(value || [])].sort()
-}
-
-function isSameAccessList(left?: string[], right?: string[]) {
-  const leftList = toSortedAccessList(left)
-  const rightList = toSortedAccessList(right)
-
-  return leftList.length === rightList.length && leftList.every((item, index) => item === rightList[index])
-}
-
 function warnAccessMenuIssue(warned: Set<string>, key: string, message: string, detail: Record<string, unknown>) {
   if (warned.has(key)) {
     return
@@ -139,57 +128,35 @@ function warnAccessMenuIssue(warned: Set<string>, key: string, message: string, 
   console.warn(message, detail)
 }
 
-function warnAccessFieldMismatch(item: NuvaAccessMenuItem, route: RouteRecordNormalized, field: 'roles' | 'permissions' | 'scopes', strictRoute: boolean, warned: Set<string>) {
-  const menuList = toSortedAccessList(item[field])
-  const routeAccess = getRouteAccess(route)
-  const routeList = toSortedAccessList(routeAccess[field])
-
-  if (!menuList.length && (!routeList.length || strictRoute)) {
-    return
-  }
-
-  if (isSameAccessList(menuList, routeList)) {
-    return
-  }
-
-  warnAccessMenuIssue(
-    warned,
-    `${describeMenuItem(item)}:${route.path}:${field}:${menuList.join(',')}:${routeList.join(',')}`,
-    `[nuva/auth] access menu "${describeMenuItem(item)}" ${field} do not match route meta ${field}.`,
-    {
-      menu: item,
-      route: { name: route.name, path: route.path },
-      menuAccess: menuList,
-      routeAccess: routeList,
-    },
-  )
-}
-
 function warnAccessMenuIssues(items: NuvaAccessMenuItem[], routes: RouteRecordNormalized[], strictRoute: boolean, routePrune: boolean, warned: Set<string>) {
   if (import.meta.env.PROD) {
     return
   }
 
-  for (const item of items) {
-    const route = findRoute(item, routes)
-
-    if (routePrune && isRouteMenu(item) && !route) {
+  for (const issue of validateAccessMenus(items, routes, { strictRoute, routePrune })) {
+    if (issue.type === 'missing-route') {
       warnAccessMenuIssue(
         warned,
-        `${describeMenuItem(item)}:missing-route`,
-        `[nuva/auth] access menu "${describeMenuItem(item)}" points to a route that does not exist.`,
-        { menu: item },
+        `${describeMenuItem(issue.menu)}:missing-route`,
+        `[nuva/auth] access menu "${describeMenuItem(issue.menu)}" points to a route that does not exist.`,
+        { menu: issue.menu },
       )
+
+      continue
     }
 
-    if (route) {
-      warnAccessFieldMismatch(item, route, 'roles', strictRoute, warned)
-      warnAccessFieldMismatch(item, route, 'permissions', strictRoute, warned)
-      warnAccessFieldMismatch(item, route, 'scopes', strictRoute, warned)
-    }
-
-    if (item.children?.length) {
-      warnAccessMenuIssues(item.children, routes, strictRoute, routePrune, warned)
+    if (issue.type === 'access-mismatch' && issue.field && issue.route) {
+      warnAccessMenuIssue(
+        warned,
+        `${describeMenuItem(issue.menu)}:${issue.route.path}:${issue.field}:${issue.menuAccess?.join(',')}:${issue.routeAccess?.join(',')}`,
+        `[nuva/auth] access menu "${describeMenuItem(issue.menu)}" ${issue.field} do not match route meta ${issue.field}.`,
+        {
+          menu: issue.menu,
+          route: issue.route,
+          menuAccess: issue.menuAccess,
+          routeAccess: issue.routeAccess,
+        },
+      )
     }
   }
 }

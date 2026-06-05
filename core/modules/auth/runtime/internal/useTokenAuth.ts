@@ -1,8 +1,11 @@
 import type { NuvaProfileResolver } from '../../../../config'
+import { useState } from 'nuxt/app'
+import { computed } from 'vue'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 import { hasAccessMenus, normalizeAccessMenus } from '../utils/access-menu'
 import { hasPermissionState, resolvePermissionState } from '../utils/permission'
 import { fetchRemoteUser } from '../utils/remote'
+import { clearNuvaAuthDerivedState } from './clearAuthState'
 import { useAccessMenuState } from './useAccessMenuState'
 import { useNuvaAuthResolvers } from './useNuvaAuthResolvers'
 import { usePermissionState } from './usePermissionState'
@@ -47,10 +50,7 @@ export function useTokenAuth<TUser = unknown>() {
   const { token, isAuthenticated: hasToken, setToken: setStoredToken, clearToken: clearStoredToken } = useTokenStore()
 
   function clearSessionState() {
-    accessMenuState.value.menus = []
-    accessMenuState.value.loadedAt = 0
-    permissionState.value.permission = null
-    permissionState.value.loadedAt = 0
+    clearNuvaAuthDerivedState({ accessMenuState, permissionState })
     setUser(null)
   }
 

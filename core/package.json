@@ -10,6 +10,15 @@
     "./base": "./modules/nuva/module.ts",
     "./nuxt.config": "./nuxt.config.ts",
     "./auth": "./modules/auth/module.ts",
+    "./auth/adapter": "./modules/auth/runtime/adapters/registry.ts",
+    "./auth/access-menu": "./modules/auth/runtime/utils/access-menu.ts",
+    "./auth/permission": "./modules/auth/runtime/utils/permission.ts",
+    "./auth/server-adapter": "./modules/auth/runtime/adapters/server-registry.ts",
+    "./auth/state": "./modules/auth/runtime/internal/clearAuthState.ts",
+    "./auth/token": "./modules/auth/runtime/composables/useTokenAuthClient.ts",
+    "./better-auth": "./modules/better-auth/module.ts",
+    "./better-auth/client": "./modules/better-auth/runtime/composables/useBetterAuthClient.ts",
+    "./better-auth/server-adapter": "./modules/better-auth/runtime/server-adapter.ts",
     "./config": "./config/index.ts",
     "./nuva-config": "./config/index.ts",
     "./http": "./http/index.ts",
@@ -47,15 +56,20 @@
   },
   "peerDependencies": {
     "alova": ">=3.0.0",
+    "better-auth": ">=1.6.0",
     "nuxt": ">=4.0.0",
     "valibot": ">=1.4.1"
+  },
+  "peerDependenciesMeta": {
+    "better-auth": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@nuxt/icon": "catalog:",
     "@nuxt/kit": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@vueuse/nuxt": "catalog:",
-    "better-auth": "catalog:",
     "defu": "catalog:",
     "ohash": "catalog:",
     "tailwindcss": "catalog:"
@@ -66,6 +80,7 @@
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:",
     "alova": "catalog:",
+    "better-auth": "catalog:",
     "happy-dom": "catalog:",
     "msw": "catalog:",
     "nuxt": "catalog:",

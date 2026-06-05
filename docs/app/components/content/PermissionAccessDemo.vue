@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type SnippetId = 'config' | 'page' | 'button' | 'server' | 'server-guard'
+type SnippetId = 'config' | 'page' | 'button' | 'button-sync' | 'server' | 'server-guard'
 
 interface Snippet {
   id: SnippetId
@@ -33,7 +33,7 @@ const demos: Demo[] = [
         label: 'nuva.config.ts',
         code: `export default defineNuvaConfig({
   auth: {
-    preset: 'remote',
+    provider: 'token',
     global: true,
     permission: {
       provider: 'profile',
@@ -94,7 +94,7 @@ const demos: Demo[] = [
         label: 'nuva.config.ts',
         code: `export default defineNuvaConfig({
   auth: {
-    preset: 'remote',
+    provider: 'token',
     permission: {
       provider: 'endpoint',
       remote: {
@@ -147,7 +147,7 @@ requireNuvaPermission(event, 'system:user:create')`,
         label: 'nuxt.config.ts',
         code: `export default defineNuxtConfig({
   nuvaAuth: {
-    preset: 'token',
+    provider: 'token',
     permission: {
       provider: 'local',
       local: {
@@ -194,8 +194,9 @@ requireNuvaPermission(event, 'profile:update', {
         label: 'nuva.config.ts',
         code: `export default defineNuvaConfig({
   auth: {
-    preset: 'hybrid',
+    provider: 'token',
     permission: {
+      provider: 'hybrid',
       local: {
         permissions: ['dashboard:read'],
       },
@@ -240,20 +241,17 @@ requireNuvaPermission(event, 'dashboard:export')`,
     label: 'Better Auth',
     title: 'Better Auth session + 动态权限',
     description: '让 Better Auth 负责认证协议和 organization.hasPermission，Nuva 负责路由、UI 和统一权限入口。',
-    points: ['作为独立 preset 使用', '不和 token 模式混配', '权限点使用 resource:action'],
+    points: ['作为独立 provider 使用', '不和 token 模式混配', '权限点使用 resource:action'],
     snippets: [
       {
         id: 'config',
         label: 'nuva.config.ts',
         code: `export default defineNuvaConfig({
   auth: {
-    preset: 'better-auth',
+    provider: 'better-auth',
     betterAuth: {
       serverAuthImport: '~~/server/utils/better-auth',
-    },
-    permission: {
-      provider: 'better-auth',
-      betterAuth: {
+      organization: {
         hasPermission: true,
       },
     },
@@ -286,7 +284,7 @@ requireNuvaPermission(event, 'dashboard:export')`,
       {
         id: 'server',
         label: '服务端鉴权',
-        code: `const auth = useBetterAuth()
+        code: `const auth = useBetterAuthClient()
 const session = await auth.api.getSession({ headers })
 
 // 服务端仍按 Better Auth 插件校验动态权限`,

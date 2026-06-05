@@ -1,4 +1,5 @@
 import type { HttpSuccessCodes } from '../../types/alova'
+import { useRequestURL } from 'nuxt/app'
 
 export function normalizeSuccessCodes(codes: HttpSuccessCodes | unknown): Array<number | string> {
   if (Array.isArray(codes)) {

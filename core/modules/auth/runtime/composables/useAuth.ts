@@ -1,41 +1,34 @@
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
-import { useAuthRedirect } from '../utils/redirect'
-import { useBetterAuth } from './useBetterAuth'
-import { useBetterAuthSession } from './useBetterAuthSession'
-import { usePermission } from './usePermission'
-import { useTokenAuth } from './useTokenAuth'
+import { useAuthAdapter } from '../adapters/registry'
+import { clearNuvaAuthDerivedState } from '../internal/clearAuthState'
+import { useAuthRedirect } from '../internal/redirect'
+import { useAccessMenuState } from '../internal/useAccessMenuState'
+import { usePermissionState } from '../internal/usePermissionState'
 
 export function useAuth<TUser = unknown>() {
   const config = useNuvaConfig().auth
-  const tokenAuth = useTokenAuth<TUser>()
-  const isBetterAuth = config.provider === 'better-auth'
-  const betterAuthSession = isBetterAuth ? useBetterAuthSession() : undefined
-  const permission = usePermission()
+  const adapter = useAuthAdapter<TUser>(config.provider)
   const redirect = useAuthRedirect()
-  const betterAuthClient = config.mode === 'fullstack' ? useBetterAuth() : undefined
+  const accessMenuState = useAccessMenuState()
+  const permissionState = usePermissionState()
+
+  async function refresh() {
+    await adapter.ensureAuthenticated?.()
+  }
 
   async function logout() {
-    if (isBetterAuth) {
-      await betterAuthSession?.logout()
-      return
-    }
-
-    tokenAuth.logout()
+    await adapter.logout()
+    clearNuvaAuthDerivedState({ accessMenuState, permissionState })
   }
 
   return {
-    mode: config.mode,
     provider: config.provider,
-    user: computed(() => isBetterAuth ? betterAuthSession?.user.value as TUser | null : tokenAuth.user.value),
-    ready: computed(() => isBetterAuth ? !!betterAuthSession?.ready.value : tokenAuth.ready.value),
-    isAuthenticated: computed(() => isBetterAuth ? !!betterAuthSession?.isAuthenticated.value : tokenAuth.isAuthenticated.value),
-    loginWithToken: tokenAuth.loginWithToken,
+    user: adapter.user,
+    ready: adapter.ready,
+    isAuthenticated: adapter.isAuthenticated,
+    refresh,
     logout,
     toLogin: redirect.toLogin,
     afterLogin: redirect.afterLogin,
-    tokenAuth,
-    betterAuthSession,
-    permission,
-    betterAuthClient,
   }
 }

@@ -49,7 +49,7 @@ const { navigateToMock } = vi.hoisted(() => ({
 
 mockNuxtImport('navigateTo', () => navigateToMock)
 
-vi.mock('../../modules/auth/runtime/composables/useTokenAuth', () => ({
+vi.mock('../../modules/auth/runtime/internal/useTokenAuth', () => ({
   useTokenAuth: () => tokenAuth,
 }))
 
@@ -57,8 +57,8 @@ vi.mock('../../modules/auth/runtime/composables/usePermission', () => ({
   usePermission: () => permission,
 }))
 
-vi.mock('../../modules/auth/runtime/utils/redirect', async () => {
-  const actual = await vi.importActual<typeof import('../../modules/auth/runtime/utils/redirect')>('../../modules/auth/runtime/utils/redirect')
+vi.mock('../../modules/auth/runtime/internal/redirect', async () => {
+  const actual = await vi.importActual<typeof import('../../modules/auth/runtime/internal/redirect')>('../../modules/auth/runtime/internal/redirect')
   return {
     ...actual,
     useAuthRedirect: () => redirects,
@@ -99,6 +99,22 @@ describe('auth middleware', () => {
 
     expect(result).toBeUndefined()
     expect(tokenAuth.ensureUser).not.toHaveBeenCalled()
+  })
+
+  it('protects public route entries when route meta explicitly requires auth', async () => {
+    route.path = '/public'
+    route.fullPath = '/public'
+    route.meta = { auth: true }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const middleware = createAuthMiddleware()
+    const result = await middleware(route as any, {} as any)
+
+    expect(redirects.toLogin).toHaveBeenCalled()
+    expect(result).toEqual({ path: '/login', query: { redirect: '/protected' } })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('publicRoutes contains "/public"'))
+
+    warn.mockRestore()
   })
 
   it('allows authenticated users through role and permission checks', async () => {

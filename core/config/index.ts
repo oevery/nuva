@@ -39,16 +39,29 @@ export interface NuvaApiConfig {
   successCodes: string
 }
 
-export type NuvaAuthModuleMode = 'frontend' | 'fullstack'
-export type NuvaAuthProvider = 'token' | 'better-auth'
-export type NuvaAuthPreset = 'token' | 'remote' | 'hybrid' | 'better-auth'
+export type NuvaAuthProvider = 'token' | 'better-auth' | (string & {})
 
-export type NuvaPermissionSource = 'local' | 'remote' | 'hybrid' | 'better-auth'
-export type NuvaPermissionProvider = 'local' | 'profile' | 'endpoint' | 'remote' | 'hybrid' | 'better-auth'
+export type NuvaPermissionSource = 'local' | 'remote' | 'hybrid' | 'adapter'
+export type NuvaPermissionProvider = 'local' | 'profile' | 'endpoint' | 'remote' | 'hybrid' | 'adapter'
 export type NuvaPermissionMatchMode = 'any' | 'all'
 export type NuvaPermissionDecision = 'allow' | 'deny' | 'unknown'
+export type NuvaPermissionCheckReason = 'allowed' | 'missing-permission' | 'missing-role' | 'missing-scope' | 'unknown'
 export type NuvaAccessMenuSource = 'none' | 'profile' | 'endpoint' | 'route'
 export type NuvaAccessMenuType = 'route' | 'group' | 'link' | 'action' | 'iframe' | 'remote'
+
+export interface NuvaPermissionCheckContext {
+  target?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface NuvaPermissionCheckResult {
+  decision: NuvaPermissionDecision
+  reason: NuvaPermissionCheckReason
+  required: string[]
+  matched: string[]
+  missing: string[]
+  mode: NuvaPermissionMatchMode
+}
 
 export interface NuvaAccessScope {
   userId?: string | number
@@ -158,11 +171,6 @@ export interface NuvaPermissionConfig {
   roleMode: NuvaPermissionMatchMode
   local: NuvaPermissionState
   remote: NuvaRemotePermissionConfig
-  betterAuth: {
-    hasPermission: boolean
-    organization: boolean
-    dynamicAccessControl: boolean
-  }
 }
 
 export interface NuvaResolvedPermissionConfig extends Omit<NuvaPermissionConfig, 'remote'> {
@@ -182,10 +190,20 @@ export interface NuvaResolvedAccessMenuConfig extends Omit<NuvaAccessMenuConfig,
   remote: NuvaResolvedRemoteAccessMenuConfig
 }
 
-export interface NuvaAuthConfig {
-  preset?: NuvaAuthPreset
+export interface NuvaBetterAuthOrganizationConfig {
   enabled: boolean
-  mode: NuvaAuthModuleMode
+  hasPermission: boolean
+  dynamicAccessControl: boolean
+}
+
+export interface NuvaBetterAuthConfig {
+  basePath: string
+  serverAuthImport: string
+  organization: NuvaBetterAuthOrganizationConfig
+}
+
+export interface NuvaAuthConfig {
+  enabled: boolean
   provider: NuvaAuthProvider
   loginPath: string
   homePath: string
@@ -195,10 +213,7 @@ export interface NuvaAuthConfig {
   token: NuvaAuthTokenConfig
   permission: NuvaPermissionConfig
   accessMenu: NuvaAccessMenuConfig
-  betterAuth: {
-    basePath: string
-    serverAuthImport: string
-  }
+  betterAuth: NuvaBetterAuthConfig
 }
 
 export interface NuvaResolvedAuthConfig extends Omit<NuvaAuthConfig, 'permission' | 'accessMenu'> {
@@ -227,15 +242,16 @@ export interface NuvaModuleOptions extends Partial<NuvaConfigFile> {
 export type NuvaAuthProjectConfig = NuvaConfigFile
 
 export interface NuvaAuthModuleOptions extends Partial<Omit<NuvaAuthConfig, 'token' | 'betterAuth' | 'permission' | 'accessMenu'>> {
-  permission?: Partial<Omit<NuvaPermissionConfig, 'local' | 'remote' | 'betterAuth'>> & {
+  permission?: Partial<Omit<NuvaPermissionConfig, 'local' | 'remote' | 'source'>> & {
     local?: Partial<NuvaPermissionState>
     remote?: Partial<NuvaRemotePermissionOptions>
-    betterAuth?: Partial<NuvaPermissionConfig['betterAuth']>
   }
   accessMenu?: Partial<Omit<NuvaAccessMenuConfig, 'remote'>> & {
     remote?: Partial<NuvaRemoteAccessMenuOptions>
   }
-  betterAuth?: Partial<NuvaAuthConfig['betterAuth']>
+  betterAuth?: Partial<Omit<NuvaBetterAuthConfig, 'organization'>> & {
+    organization?: Partial<NuvaBetterAuthOrganizationConfig>
+  }
 }
 
 export interface NuvaPublicConfig {
@@ -279,11 +295,6 @@ export const defaultNuvaPermissionConfig = {
     permissionResolver: false,
     cacheMaxAge: 0,
   },
-  betterAuth: {
-    hasPermission: false,
-    organization: false,
-    dynamicAccessControl: false,
-  },
 } satisfies NuvaPermissionConfig
 
 export const defaultNuvaAccessMenuConfig = {
@@ -299,9 +310,18 @@ export const defaultNuvaAccessMenuConfig = {
   },
 } satisfies NuvaAccessMenuConfig
 
+export const defaultNuvaBetterAuthConfig = {
+  basePath: '/api/auth',
+  serverAuthImport: '~~/server/utils/better-auth',
+  organization: {
+    enabled: false,
+    hasPermission: false,
+    dynamicAccessControl: false,
+  },
+} satisfies NuvaBetterAuthConfig
+
 export const defaultNuvaAuthConfig = {
   enabled: false,
-  mode: 'frontend',
   provider: 'token',
   loginPath: '/login',
   homePath: '/',
@@ -316,10 +336,7 @@ export const defaultNuvaAuthConfig = {
   },
   permission: defaultNuvaPermissionConfig,
   accessMenu: defaultNuvaAccessMenuConfig,
-  betterAuth: {
-    basePath: '/api/auth',
-    serverAuthImport: '~~/server/utils/better-auth',
-  },
+  betterAuth: defaultNuvaBetterAuthConfig,
 } satisfies NuvaAuthConfig
 
 export const defaultNuvaPublicConfig = {

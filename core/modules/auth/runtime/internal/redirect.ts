@@ -1,3 +1,4 @@
+import { navigateTo, useNuxtApp, useRoute } from 'nuxt/app'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 
 export function normalizeAuthRedirectTarget(value: unknown, fallback: string) {

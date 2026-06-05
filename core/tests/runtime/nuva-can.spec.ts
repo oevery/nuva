@@ -87,9 +87,29 @@ describe('nuva can', () => {
     expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
     await flushPromises()
 
-    expect(permission.canAsync).toHaveBeenCalledWith('dashboard:view')
+    expect(permission.canAsync).toHaveBeenCalledWith('dashboard:view', undefined)
     expect(wrapper.find('[data-test="allowed"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
+  })
+
+  it('passes context to async permission checks', async () => {
+    const context = { target: { rowId: 'row-1' } }
+
+    const wrapper = mount(NuvaCan, {
+      props: {
+        permission: 'dashboard:update',
+        resolve: 'async',
+        context,
+      },
+      slots: {
+        default: '<span data-test="allowed">Allowed</span>',
+      },
+    })
+
+    await flushPromises()
+
+    expect(permission.canAsync).toHaveBeenCalledWith('dashboard:update', context)
+    expect(wrapper.find('[data-test="allowed"]').exists()).toBe(true)
   })
 
   it('renders pending slot while resolving unknown permissions', async () => {

@@ -1,4 +1,4 @@
-import { useBetterAuthSession } from '../../modules/auth/runtime/composables/useBetterAuthSession'
+import { useBetterAuthSession } from '../../modules/better-auth/runtime/internal/useBetterAuthSession'
 
 const betterAuthClient = vi.hoisted(() => ({
   useSession: vi.fn(),
@@ -9,8 +9,8 @@ const betterAuthClient = vi.hoisted(() => ({
   signOut: vi.fn(),
 }))
 
-vi.mock('../../modules/auth/runtime/composables/useBetterAuth', () => ({
-  useBetterAuth: () => betterAuthClient,
+vi.mock('../../modules/better-auth/runtime/composables/useBetterAuthClient', () => ({
+  useBetterAuthClient: () => betterAuthClient,
 }))
 
 describe('useBetterAuthSession', () => {

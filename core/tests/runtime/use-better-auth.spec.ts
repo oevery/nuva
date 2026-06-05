@@ -1,5 +1,5 @@
 import { defaultNuvaPublicConfig } from '../../config'
-import { useBetterAuth } from '../../modules/auth/runtime/composables/useBetterAuth'
+import { useBetterAuthClient } from '../../modules/better-auth/runtime/composables/useBetterAuthClient'
 
 const createAuthClientMock = vi.hoisted(() => vi.fn((options: unknown) => ({ options })))
 const organizationClientMock = vi.hoisted(() => vi.fn((options?: unknown) => ({ plugin: 'organization', options })))
@@ -29,8 +29,8 @@ describe('use better auth', () => {
   it('creates a client with normalized base path and forwarded server cookies', () => {
     useRuntimeConfig().public.nuva.auth.betterAuth.basePath = 'auth'
 
-    const client = useBetterAuth() as { options: any }
-    const cachedClient = useBetterAuth()
+    const client = useBetterAuthClient() as { options: any }
+    const cachedClient = useBetterAuthClient()
 
     expect(client.options).toMatchObject({
       baseURL: 'https://app.example.com',
@@ -46,13 +46,13 @@ describe('use better auth', () => {
   })
 
   it('enables organization plugin with dynamic access control when configured', () => {
-    useRuntimeConfig().public.nuva.auth.permission.betterAuth = {
+    useRuntimeConfig().public.nuva.auth.betterAuth.organization = {
+      enabled: true,
       hasPermission: true,
-      organization: false,
       dynamicAccessControl: true,
     }
 
-    const client = useBetterAuth() as { options: any }
+    const client = useBetterAuthClient() as { options: any }
 
     expect(organizationClientMock).toHaveBeenCalledWith({
       dynamicAccessControl: { enabled: true },

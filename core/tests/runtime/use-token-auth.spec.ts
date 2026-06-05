@@ -1,8 +1,8 @@
 import { defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../config'
-import { useAccessMenuState } from '../../modules/auth/runtime/composables/useAccessMenuState'
-import { useNuvaAuthResolvers } from '../../modules/auth/runtime/composables/useNuvaAuthResolvers'
-import { usePermissionState } from '../../modules/auth/runtime/composables/usePermissionState'
-import { useTokenAuth } from '../../modules/auth/runtime/composables/useTokenAuth'
+import { useAccessMenuState } from '../../modules/auth/runtime/internal/useAccessMenuState'
+import { useNuvaAuthResolvers } from '../../modules/auth/runtime/internal/useNuvaAuthResolvers'
+import { usePermissionState } from '../../modules/auth/runtime/internal/usePermissionState'
+import { useTokenAuth } from '../../modules/auth/runtime/internal/useTokenAuth'
 
 const cookieState = ref<string | null>(null)
 

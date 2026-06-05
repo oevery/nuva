@@ -1,4 +1,4 @@
-import { useBetterAuth } from './useBetterAuth'
+import { useBetterAuthClient } from '../composables/useBetterAuthClient'
 
 interface BetterAuthSessionState {
   data: unknown
@@ -82,7 +82,7 @@ export function useBetterAuthSession() {
       ...options,
       headers: requestHeaders,
     })) as typeof useFetch
-    const betterAuth = useBetterAuth() as {
+    const betterAuth = useBetterAuthClient() as {
       useSession?: (fetcher?: typeof useFetch) => unknown
       useActiveOrganization?: (fetcher?: typeof useFetch) => unknown
       organization?: {
@@ -129,7 +129,7 @@ export function useBetterAuthSession() {
   }
 
   async function logout() {
-    const betterAuth = useBetterAuth() as {
+    const betterAuth = useBetterAuthClient() as {
       signOut?: () => Promise<unknown> | unknown
     }
 

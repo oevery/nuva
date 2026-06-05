@@ -1,17 +1,11 @@
-import type { NuvaPermissionDecision, NuvaPermissionMatchMode, NuvaPermissionState } from '../../../../config'
+import type { NuvaPermissionCheckContext, NuvaPermissionDecision, NuvaPermissionMatchMode, NuvaPermissionState } from '../../../../config'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
-import { matchList, hasScope as matchScope, resolvePermissionState, toBetterAuthPermissions, toResourcePermission } from '../utils/permission'
+import { useAuthAdapter } from '../adapters/registry'
+import { useNuvaAuthResolvers } from '../internal/useNuvaAuthResolvers'
+import { usePermissionState } from '../internal/usePermissionState'
+import { useTokenAuth } from '../internal/useTokenAuth'
+import { explainList, explainScope, matchList, hasScope as matchScope, resolvePermissionState, toResourcePermission } from '../utils/permission'
 import { fetchRemotePermission, toPermissionState } from '../utils/remote'
-import { useBetterAuth } from './useBetterAuth'
-import { useBetterAuthSession } from './useBetterAuthSession'
-import { useNuvaAuthResolvers } from './useNuvaAuthResolvers'
-import { usePermissionState } from './usePermissionState'
-import { useTokenAuth } from './useTokenAuth'
-
-interface BetterAuthOrganizationClient {
-  hasPermission?: (payload: { permissions: Record<string, string[]> }) => Promise<{ data?: boolean } | boolean>
-  checkRolePermission?: (payload: { role: string, permissions: Record<string, string[]> }) => boolean
-}
 
 type PermissionCheckDecision = 'allow' | 'deny' | 'unknown'
 
@@ -29,10 +23,6 @@ function pickFirstPermission(permission: string | string[]) {
   }
 
   return permission
-}
-
-function resolveBetterAuthPermissionResult(result: { data?: boolean } | boolean) {
-  return typeof result === 'boolean' ? result : !!result.data
 }
 
 function toDecision(allowed: boolean): NuvaPermissionDecision {
@@ -63,8 +53,8 @@ function isRemoteSource(source: string) {
   return source === 'remote' || source === 'hybrid'
 }
 
-function isBetterAuthSource(source: string) {
-  return source === 'better-auth'
+function isAdapterSource(source: string) {
+  return source === 'adapter'
 }
 
 function isFresh(timestamp: number, maxAge: number) {
@@ -81,45 +71,24 @@ function createEmptyPermissionState(source: NuvaPermissionState['source']): Nuva
   }
 }
 
-function toRoleList(value: unknown) {
-  if (Array.isArray(value)) {
-    return value.map(String).filter(Boolean)
-  }
-
-  return typeof value === 'string' && value ? [value] : []
-}
-
-function createBetterAuthPermissionState(session: ReturnType<typeof useBetterAuthSession>): NuvaPermissionState {
-  const activeMember = session.activeMember.value as { role?: string | string[] } | null
-  const activeOrganization = session.activeOrganization.value as { id?: string, slug?: string } | null
-
-  return {
-    roles: toRoleList(activeMember?.role),
-    permissions: [],
-    scope: {
-      organizationId: activeOrganization?.id,
-      organizationSlug: activeOrganization?.slug,
-    },
-    dataAccess: { type: 'self' },
-    source: 'better-auth',
-  }
-}
-
 export function usePermission<TUser extends Partial<NuvaPermissionState> = Partial<NuvaPermissionState>>() {
   const config = useNuvaConfig().auth
   const resolvers = useNuvaAuthResolvers()
   const tokenAuth = useTokenAuth<TUser>()
   const permissionState = usePermissionState()
-  const isBetterAuthProvider = config.provider === 'better-auth'
-  const betterAuthSession = isBetterAuthProvider || config.permission.source === 'better-auth' ? useBetterAuthSession() : undefined
+  const usesAuthAdapter = config.provider !== 'token' || isAdapterSource(config.permission.source)
+  const authAdapter = usesAuthAdapter
+    ? useAuthAdapter<TUser>(config.provider)
+    : undefined
+  const adapterPermission = authAdapter?.permission
 
   const state = computed(() => {
-    if (config.permission.source === 'better-auth' && betterAuthSession) {
-      return createBetterAuthPermissionState(betterAuthSession)
+    if (isAdapterSource(config.permission.source) && adapterPermission?.state) {
+      return adapterPermission.state.value
     }
 
-    const fallback = config.permission.source === 'better-auth'
-      ? createEmptyPermissionState('better-auth')
+    const fallback = isAdapterSource(config.permission.source)
+      ? createEmptyPermissionState('adapter')
       : config.permission.local
 
     return permissionState.value.permission || resolvePermissionState(
@@ -130,8 +99,8 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
   })
 
   const loaded = computed(() => {
-    if (config.permission.source === 'better-auth') {
-      return !!betterAuthSession?.ready.value
+    if (isAdapterSource(config.permission.source)) {
+      return !!adapterPermission?.loaded?.value
     }
 
     if (!isRemoteSource(config.permission.source)) {
@@ -155,6 +124,10 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
   }
 
   async function refresh() {
+    if (isAdapterSource(config.permission.source)) {
+      return await adapterPermission?.refresh?.() || state.value
+    }
+
     const request = config.permission.remote.permission
 
     if (!request?.url && !config.permission.remote.permissionResolver) {
@@ -175,6 +148,10 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
   }
 
   async function ensure() {
+    if (isAdapterSource(config.permission.source)) {
+      return await adapterPermission?.ensure?.() || state.value
+    }
+
     if (!isRemoteSource(config.permission.source)) {
       return state.value
     }
@@ -190,23 +167,11 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
     warnInvalidPermissionArray('canState', permission)
     const singlePermission = pickFirstPermission(permission)
 
-    if (!isBetterAuthSource(config.permission.source)) {
+    if (!isAdapterSource(config.permission.source)) {
       return toDecision(matchList(state.value.permissions, singlePermission))
     }
 
-    if (!config.permission.betterAuth.hasPermission) {
-      return toDecision(matchList(state.value.permissions, singlePermission))
-    }
-
-    const role = state.value.roles[0]
-    const permissions = toBetterAuthPermissions(singlePermission)
-    const organization = (useBetterAuth() as { organization?: BetterAuthOrganizationClient }).organization
-
-    if (!role || !permissions || !Object.keys(permissions).length || !organization?.checkRolePermission) {
-      return 'unknown'
-    }
-
-    return toDecision(organization.checkRolePermission({ role, permissions }))
+    return adapterPermission?.canState?.(singlePermission) || toDecision(matchList(state.value.permissions, singlePermission))
   }
 
   function anyState(permissions: string[]) {
@@ -221,35 +186,16 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
     return canState(permission) === 'allow'
   }
 
-  async function canAsync(permission: string | string[]) {
+  async function canAsync(permission: string | string[], context?: NuvaPermissionCheckContext) {
     warnInvalidPermissionArray('canAsync', permission)
     const singlePermission = pickFirstPermission(permission)
 
-    if (config.permission.source !== 'better-auth') {
-      return can(singlePermission)
+    if (!isAdapterSource(config.permission.source)) {
+      const ensuredState = await ensure()
+      return matchList(ensuredState.permissions, singlePermission)
     }
 
-    if (!config.permission.betterAuth.hasPermission) {
-      return false
-    }
-
-    const organization = (useBetterAuth() as { organization?: BetterAuthOrganizationClient }).organization
-
-    if (!organization?.hasPermission) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: 'Better Auth hasPermission is not configured',
-        message: 'Set nuvaAuth.permission.betterAuth.hasPermission to true and enable the Better Auth organization plugin.',
-      })
-    }
-
-    const permissions = toBetterAuthPermissions(singlePermission)
-
-    if (!permissions || !Object.keys(permissions).length) {
-      return false
-    }
-
-    return resolveBetterAuthPermissionResult(await organization.hasPermission({ permissions }))
+    return await adapterPermission?.canAsync?.(singlePermission, context) || false
   }
 
   function any(permission: string[]) {
@@ -260,46 +206,40 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
     return allState(permission) === 'allow'
   }
 
-  async function anyAsync(permissions: string[]) {
+  async function anyAsync(permissions: string[], context?: NuvaPermissionCheckContext) {
     if (!permissions.length) {
       return true
     }
 
-    const results = await Promise.all(permissions.map(permission => canAsync(permission)))
+    if (!isAdapterSource(config.permission.source)) {
+      const ensuredState = await ensure()
+      return matchList(ensuredState.permissions, permissions, 'any')
+    }
+
+    if (adapterPermission?.anyAsync) {
+      return await adapterPermission.anyAsync(permissions, context)
+    }
+
+    const results = await Promise.all(permissions.map(permission => canAsync(permission, context)))
     return results.some(Boolean)
   }
 
-  async function allAsync(permissions: string[]) {
+  async function allAsync(permissions: string[], context?: NuvaPermissionCheckContext) {
     if (!permissions.length) {
       return true
     }
 
-    if (config.permission.source !== 'better-auth') {
-      const results = await Promise.all(permissions.map(permission => canAsync(permission)))
-      return results.every(Boolean)
+    if (!isAdapterSource(config.permission.source)) {
+      const ensuredState = await ensure()
+      return matchList(ensuredState.permissions, permissions, 'all')
     }
 
-    if (!config.permission.betterAuth.hasPermission) {
-      return false
+    if (adapterPermission?.allAsync) {
+      return await adapterPermission.allAsync(permissions, context)
     }
 
-    const organization = (useBetterAuth() as { organization?: BetterAuthOrganizationClient }).organization
-
-    if (!organization?.hasPermission) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: 'Better Auth hasPermission is not configured',
-        message: 'Set nuvaAuth.permission.betterAuth.hasPermission to true and enable the Better Auth organization plugin.',
-      })
-    }
-
-    const mergedPermissions = toBetterAuthPermissions(permissions)
-
-    if (!mergedPermissions || !Object.keys(mergedPermissions).length) {
-      return false
-    }
-
-    return resolveBetterAuthPermissionResult(await organization.hasPermission({ permissions: mergedPermissions }))
+    const results = await Promise.all(permissions.map(permission => canAsync(permission, context)))
+    return results.every(Boolean)
   }
 
   function hasRole(role: string | string[], mode: NuvaPermissionMatchMode = config.permission.roleMode) {
@@ -312,6 +252,18 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
 
   function canAccess(resource: string, action?: string) {
     return can(toResourcePermission(resource, action))
+  }
+
+  function explain(permission: string | string[], mode: NuvaPermissionMatchMode = config.permission.permissionMode) {
+    return explainList(state.value.permissions, permission, mode, 'missing-permission')
+  }
+
+  function explainRole(role: string | string[], mode: NuvaPermissionMatchMode = config.permission.roleMode) {
+    return explainList(state.value.roles, role, mode, 'missing-role')
+  }
+
+  function explainScopeAccess(scope: string | string[], mode: NuvaPermissionMatchMode = 'all') {
+    return explainScope(state.value.scope, scope, mode)
   }
 
   function cannot(permission: string | string[]) {
@@ -327,7 +279,7 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
   }
 
   return {
-    authReady: computed(() => isBetterAuthProvider ? !!betterAuthSession?.ready.value : tokenAuth.ready.value),
+    authReady: computed(() => authAdapter ? authAdapter.ready.value : tokenAuth.ready.value),
     permissionReady: loaded,
     ready: loaded,
     loaded,
@@ -355,5 +307,8 @@ export function usePermission<TUser extends Partial<NuvaPermissionState> = Parti
     role,
     inScope,
     canAccess,
+    explain,
+    explainRole,
+    explainScope: explainScopeAccess,
   }
 }

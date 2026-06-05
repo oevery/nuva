@@ -41,7 +41,11 @@ describe('remote auth utils', () => {
     expect(httpClient.Post).toHaveBeenCalledWith('http://localhost:3000/api/profile', { token: 'token-1' }, {
       params: { expand: 'permission' },
       headers: { 'x-test': '1' },
-      meta: { ignoreToken: true },
+      meta: {
+        errorSilent: true,
+        ignoreToken: true,
+        unauthorizedBehavior: 'throw',
+      },
     })
   })
 
@@ -57,7 +61,28 @@ describe('remote auth utils', () => {
     expect(httpClient.Delete).toHaveBeenCalledWith('http://localhost:3000/api/permission', { id: 'permission-1' }, {
       params: undefined,
       headers: undefined,
-      meta: undefined,
+      meta: {
+        errorSilent: true,
+        unauthorizedBehavior: 'throw',
+      },
+    })
+  })
+
+  it('normalizes same-origin relative URLs outside api base and keeps params on alova config', async () => {
+    httpClient.Get.mockResolvedValue({ id: 'user-1' })
+
+    await fetchRemoteUser(defaultNuvaAuthConfig as any, {
+      url: '/demo-auth/me',
+      params: 'expand=permission',
+    }, null)
+
+    expect(httpClient.Get).toHaveBeenCalledWith('http://localhost:3000/demo-auth/me', {
+      params: 'expand=permission',
+      headers: undefined,
+      meta: {
+        errorSilent: true,
+        unauthorizedBehavior: 'throw',
+      },
     })
   })
 

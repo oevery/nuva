@@ -5,7 +5,6 @@ const tokenAuth = vi.hoisted(() => ({
   user: { value: null as { id: string } | null },
   ready: { value: false },
   isAuthenticated: { value: false },
-  loginWithToken: vi.fn(),
   logout: vi.fn(),
 }))
 
@@ -16,36 +15,34 @@ const betterAuthSession = vi.hoisted(() => ({
   logout: vi.fn(),
 }))
 
-const betterAuthClient = vi.hoisted(() => ({
-  signIn: vi.fn(),
-}))
-
-const permission = vi.hoisted(() => ({
-  can: vi.fn(),
-}))
-
 const redirect = vi.hoisted(() => ({
   toLogin: vi.fn(),
   afterLogin: vi.fn(),
 }))
 
-vi.mock('../../modules/auth/runtime/composables/useTokenAuth', () => ({
+vi.mock('../../modules/auth/runtime/internal/useTokenAuth', () => ({
   useTokenAuth: () => tokenAuth,
 }))
 
-vi.mock('../../modules/auth/runtime/composables/useBetterAuthSession', () => ({
-  useBetterAuthSession: () => betterAuthSession,
+vi.mock('../../modules/auth/runtime/adapters/registry', () => ({
+  useAuthAdapter: (name: string) => name === 'better-auth'
+    ? {
+        name: 'better-auth',
+        user: betterAuthSession.user,
+        ready: betterAuthSession.ready,
+        isAuthenticated: betterAuthSession.isAuthenticated,
+        logout: betterAuthSession.logout,
+      }
+    : {
+        name: 'token',
+        user: tokenAuth.user,
+        ready: tokenAuth.ready,
+        isAuthenticated: tokenAuth.isAuthenticated,
+        logout: tokenAuth.logout,
+      },
 }))
 
-vi.mock('../../modules/auth/runtime/composables/useBetterAuth', () => ({
-  useBetterAuth: () => betterAuthClient,
-}))
-
-vi.mock('../../modules/auth/runtime/composables/usePermission', () => ({
-  usePermission: () => permission,
-}))
-
-vi.mock('../../modules/auth/runtime/utils/redirect', () => ({
+vi.mock('../../modules/auth/runtime/internal/redirect', () => ({
   useAuthRedirect: () => redirect,
 }))
 
@@ -55,7 +52,6 @@ describe('use auth', () => {
     tokenAuth.user.value = { id: 'token-user' }
     tokenAuth.ready.value = true
     tokenAuth.isAuthenticated.value = true
-    tokenAuth.loginWithToken.mockReset()
     tokenAuth.logout.mockReset()
     betterAuthSession.user.value = { id: 'better-auth-user' }
     betterAuthSession.ready.value = true
@@ -67,41 +63,32 @@ describe('use auth', () => {
   it('uses token auth state and logout in token provider mode', async () => {
     const auth = useAuth<{ id: string }>()
 
-    expect(auth.mode).toBe('frontend')
     expect(auth.provider).toBe('token')
     expect(auth.user.value).toEqual({ id: 'token-user' })
     expect(auth.ready.value).toBe(true)
     expect(auth.isAuthenticated.value).toBe(true)
-    expect(auth.betterAuthSession).toBeUndefined()
-    expect(auth.betterAuthClient).toBeUndefined()
 
-    auth.loginWithToken('token-1')
     await auth.logout()
 
-    expect(tokenAuth.loginWithToken).toHaveBeenCalledWith('token-1')
     expect(tokenAuth.logout).toHaveBeenCalledTimes(1)
     expect(betterAuthSession.logout).not.toHaveBeenCalled()
   })
 
-  it('uses better-auth session and client in fullstack better-auth mode', async () => {
+  it('uses better-auth adapter state in better-auth provider mode', async () => {
     useRuntimeConfig().public.nuva = {
       ...structuredClone(defaultNuvaPublicConfig),
       auth: {
         ...structuredClone(defaultNuvaPublicConfig.auth),
-        mode: 'fullstack',
         provider: 'better-auth',
       },
     }
 
     const auth = useAuth<{ id: string }>()
 
-    expect(auth.mode).toBe('fullstack')
     expect(auth.provider).toBe('better-auth')
     expect(auth.user.value).toEqual({ id: 'better-auth-user' })
     expect(auth.ready.value).toBe(true)
     expect(auth.isAuthenticated.value).toBe(true)
-    expect(auth.betterAuthSession).toBe(betterAuthSession)
-    expect(auth.betterAuthClient).toBe(betterAuthClient)
 
     await auth.logout()
 

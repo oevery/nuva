@@ -44,7 +44,7 @@ pnpm typecheck  # Nuxt 类型检查
 - `core` 只放基础能力和可选模块，不放业务接口和业务样式。
 - `template` 放业务页面、业务 API、服务端接口和共享类型。
 - 请求统一使用 alova，不混用 `useFetch`。
-- Auth 通过 `@oevery/nuva/auth` 按需启用，支持 `frontend` 和 `fullstack` 两种模式。
+- Auth core 通过 `@oevery/nuva/auth` 按需启用，完整 Better Auth 协议通过 `@oevery/nuva/better-auth` 可选模块启用。
 - VueUse 由 `core` 提供，业务代码优先使用 Nuxt auto-import。
 - 接口契约类型放在 `template/shared`。
 - 请求拦截器通过 `template/app/utils/http/hooks.ts` 覆盖。

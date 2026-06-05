@@ -1,7 +1,7 @@
 // @vitest-environment nuxt
 
 import { defaultNuvaPublicConfig } from '../../config'
-import { normalizeAuthRedirectTarget, useAuthRedirect } from '../../modules/auth/runtime/utils/redirect'
+import { normalizeAuthRedirectTarget, useAuthRedirect } from '../../modules/auth/runtime/internal/redirect'
 
 const { navigateToMock, route } = vi.hoisted(() => ({
   navigateToMock: vi.fn((target: unknown) => target),

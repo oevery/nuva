@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NuvaPermissionMatchMode } from '../../config'
+import type { NuvaPermissionCheckContext, NuvaPermissionMatchMode } from '../../config'
 import { usePermission as useNuvaPermission } from '../../modules/auth/runtime/composables/usePermission'
 
 interface NuvaCanProps {
@@ -11,6 +11,7 @@ interface NuvaCanProps {
   permissionMode?: NuvaPermissionMatchMode
   resolve?: 'auto' | 'sync' | 'async'
   pendingBehavior?: 'hide' | 'fallback'
+  context?: NuvaPermissionCheckContext
   invert?: boolean
 }
 
@@ -36,14 +37,14 @@ function getPermissionDecision(permissionInput: string | string[], mode: NuvaPer
   return permission.canState(permissionInput)
 }
 
-function resolvePermissionAsync(permissionInput: string | string[], mode: NuvaPermissionMatchMode) {
+function resolvePermissionAsync(permissionInput: string | string[], mode: NuvaPermissionMatchMode, context?: NuvaPermissionCheckContext) {
   if (Array.isArray(permissionInput)) {
     return mode === 'any'
-      ? permission.anyAsync(permissionInput)
-      : permission.allAsync(permissionInput)
+      ? permission.anyAsync(permissionInput, context)
+      : permission.allAsync(permissionInput, context)
   }
 
-  return permission.canAsync(permissionInput)
+  return permission.canAsync(permissionInput, context)
 }
 
 const permissionDecision = computed(() => {
@@ -91,7 +92,7 @@ const shouldRenderPending = computed(() => pending.value && props.pendingBehavio
 const shouldRenderFallback = computed(() => !allowed.value && (!pending.value || props.pendingBehavior === 'fallback'))
 
 watch(
-  () => [props.permission, props.permissionMode, props.mode, props.resolve, permissionDecision.value] as const,
+  () => [props.permission, props.permissionMode, props.mode, props.resolve, props.context, permissionDecision.value] as const,
   async (_, __, onCleanup) => {
     const currentRequestId = ++requestId
     const permissionInput = props.permission
@@ -113,7 +114,7 @@ watch(
     asyncPermissionAllowed.value = false
 
     try {
-      const allowed = await resolvePermissionAsync(permissionInput, props.permissionMode || props.mode)
+      const allowed = await resolvePermissionAsync(permissionInput, props.permissionMode || props.mode, props.context)
 
       if (!cancelled && currentRequestId === requestId) {
         asyncPermissionAllowed.value = allowed

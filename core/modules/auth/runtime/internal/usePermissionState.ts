@@ -1,4 +1,5 @@
 import type { NuvaPermissionState } from '../../../../config'
+import { useState } from 'nuxt/app'
 
 interface PermissionStoreState {
   permission: NuvaPermissionState | null

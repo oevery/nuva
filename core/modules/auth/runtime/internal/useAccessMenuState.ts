@@ -1,4 +1,5 @@
 import type { NuvaAccessMenuItem } from '../../../../config'
+import { useState } from 'nuxt/app'
 
 export interface AccessMenuState {
   menus: NuvaAccessMenuItem[]

@@ -1,4 +1,5 @@
 import type { NuvaMenuResolver, NuvaPermissionResolver, NuvaProfileResolver } from '../../../../config'
+import { useState } from 'nuxt/app'
 
 export interface NuvaAuthResolversState {
   profile: NuvaProfileResolver | null

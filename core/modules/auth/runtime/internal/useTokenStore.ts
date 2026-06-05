@@ -1,3 +1,5 @@
+import { useCookie } from 'nuxt/app'
+import { computed } from 'vue'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 
 export function useTokenStore() {
