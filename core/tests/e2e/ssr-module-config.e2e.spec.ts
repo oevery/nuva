@@ -20,10 +20,10 @@ describe('ssr module config', () => {
     expect(config.auth.publicRoutes).toContain('/public')
     expect(new Set(config.auth.publicRoutes).size).toBe(config.auth.publicRoutes.length)
     expect(config.auth.permission.source).toBe('remote')
-    expect(config.auth.permission.remote.profile).toContain('/api/profile')
-    expect(config.auth.permission.remote.permission).toBe('')
-    expect(config.auth.permission.remote.profile).toBeTypeOf('string')
-    expect(config.auth.permission.remote.permission).toBeTypeOf('string')
+    expect(config.auth.user.remote.request).toContain('/api/profile')
+    expect(config.auth.permission.remote.request).toContain('/api/profile')
+    expect(config.auth.user.remote.request).toBeTypeOf('string')
+    expect(config.auth.permission.remote.request).toBeTypeOf('string')
   })
 
   it('renders public SSR routes with server-rendered page content', async () => {

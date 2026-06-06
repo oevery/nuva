@@ -7,40 +7,46 @@ describe('useNuvaConfig', () => {
       ...structuredClone(defaultNuvaPublicConfig),
       auth: {
         ...structuredClone(defaultNuvaPublicConfig.auth),
+        user: {
+          ...structuredClone(defaultNuvaPublicConfig.auth.user),
+          remote: {
+            ...structuredClone(defaultNuvaPublicConfig.auth.user.remote),
+            request: JSON.stringify({ url: '/api/profile', method: 'POST' }),
+          },
+        },
         permission: {
           ...structuredClone(defaultNuvaPublicConfig.auth.permission),
           remote: {
             ...structuredClone(defaultNuvaPublicConfig.auth.permission.remote),
-            profile: JSON.stringify({ url: '/api/profile', method: 'POST' }),
-            permission: '/api/permission',
+            request: '/api/permission',
           },
         },
         accessMenu: {
           ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
           remote: {
             ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu.remote),
-            menu: '/api/menus',
+            request: '/api/menus',
           },
         },
       },
     }
 
     const resolvers = useState('nuva:auth:resolvers', () => ({
-      profile: vi.fn(),
+      user: vi.fn(),
       permission: vi.fn(),
       menu: vi.fn(),
     }))
     const config = useNuvaConfig()
 
-    expect(config.auth.permission.remote.profile).toEqual({
+    expect(config.auth.user.remote.request).toEqual({
       url: '/api/profile',
       method: 'POST',
     })
-    expect(config.auth.permission.remote.permission).toEqual({
+    expect(config.auth.permission.remote.request).toEqual({
       url: '/api/permission',
       method: 'GET',
     })
-    expect(config.auth.accessMenu.remote.menu).toEqual({
+    expect(config.auth.accessMenu.remote.request).toEqual({
       url: '/api/menus',
       method: 'GET',
     })

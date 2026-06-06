@@ -1,5 +1,4 @@
 import { defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../config'
-import { useAccessMenuState } from '../../modules/auth/runtime/internal/useAccessMenuState'
 import { useNuvaAuthResolvers } from '../../modules/auth/runtime/internal/useNuvaAuthResolvers'
 import { usePermissionState } from '../../modules/auth/runtime/internal/usePermissionState'
 import { useTokenAuth } from '../../modules/auth/runtime/internal/useTokenAuth'
@@ -16,9 +15,9 @@ describe('useTokenAuth', () => {
       ...structuredClone(defaultNuvaPublicConfig),
       auth: {
         ...structuredClone(defaultNuvaPublicConfig.auth),
-        accessMenu: {
-          ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          source: 'profile',
+        permission: {
+          ...structuredClone(defaultNuvaPublicConfig.auth.permission),
+          source: 'remote',
         },
       },
     }
@@ -37,7 +36,6 @@ describe('useTokenAuth', () => {
       roles: ['admin'],
       permissions: ['dashboard:view'],
       scope: { organizationId: 'org-1' },
-      menus: [{ id: 'dashboard', title: 'Dashboard', path: '/dashboard' }],
     })
 
     expect(auth.token.value).toBe('token-1')
@@ -49,10 +47,6 @@ describe('useTokenAuth', () => {
       permissions: ['dashboard:view'],
       scope: { organizationId: 'org-1' },
     })
-    expect(useAccessMenuState().value.menus).toEqual([
-      expect.objectContaining({ id: 'dashboard', title: 'Dashboard', path: '/dashboard' }),
-    ])
-
     auth.clearToken()
 
     expect(auth.token.value).toBeNull()
@@ -60,38 +54,34 @@ describe('useTokenAuth', () => {
     expect(auth.isAuthenticated.value).toBe(false)
     expect(usePermissionState().value.permission).toBeNull()
     expect(usePermissionState().value.loadedAt).toBe(0)
-    expect(useAccessMenuState().value.menus).toEqual([])
-    expect(useAccessMenuState().value.loadedAt).toBe(0)
   })
 
-  it('refreshes a remote user once while the cached profile is fresh', async () => {
+  it('refreshes a remote user once while the cached user is fresh', async () => {
     useRuntimeConfig().public.nuva = {
       ...structuredClone(defaultNuvaPublicConfig),
       auth: {
         ...structuredClone(defaultNuvaPublicConfig.auth),
+        user: {
+          ...structuredClone(defaultNuvaPublicConfig.auth.user),
+          remote: {
+            ...structuredClone(defaultNuvaPublicConfig.auth.user.remote),
+            request: serializeNuvaRemoteRequest({ url: '/api/profile' }),
+            resolver: true,
+            cacheMaxAge: 60_000,
+          },
+        },
         permission: {
           ...structuredClone(defaultNuvaPublicConfig.auth.permission),
           source: 'remote',
-          remote: {
-            ...structuredClone(defaultNuvaPublicConfig.auth.permission.remote),
-            profile: serializeNuvaRemoteRequest({ url: '/api/profile' }),
-            cacheMaxAge: 60_000,
-            profileResolver: true,
-          },
-        },
-        accessMenu: {
-          ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          source: 'profile',
         },
       },
     }
-    const profileResolver = vi.fn(async () => ({
+    const userResolver = vi.fn(async () => ({
       id: 'remote-user',
       roles: ['manager'],
       permissions: ['report:read'],
-      menus: [{ id: 'reports', title: 'Reports', path: '/reports' }],
     }))
-    useNuvaAuthResolvers().value.profile = profileResolver
+    useNuvaAuthResolvers().value.user = userResolver
 
     const auth = useTokenAuth<{ id: string, roles: string[], permissions: string[] }>()
     const firstUser = await auth.ensureUser()
@@ -101,41 +91,32 @@ describe('useTokenAuth', () => {
       id: 'remote-user',
       roles: ['manager'],
       permissions: ['report:read'],
-      menus: [{ id: 'reports', title: 'Reports', path: '/reports' }],
     })
     expect(secondUser).toEqual(firstUser)
-    expect(profileResolver).toHaveBeenCalledTimes(1)
+    expect(userResolver).toHaveBeenCalledTimes(1)
     expect(usePermissionState().value.permission).toMatchObject({
       roles: ['manager'],
       permissions: ['report:read'],
       source: 'remote',
     })
-    expect(useAccessMenuState().value.menus).toEqual([
-      expect.objectContaining({ id: 'reports' }),
-    ])
   })
 
-  it('clears token state when remote profile refresh returns an auth error', async () => {
+  it('clears token state when remote user refresh returns an auth error', async () => {
     useRuntimeConfig().public.nuva = {
       ...structuredClone(defaultNuvaPublicConfig),
       auth: {
         ...structuredClone(defaultNuvaPublicConfig.auth),
-        permission: {
-          ...structuredClone(defaultNuvaPublicConfig.auth.permission),
-          source: 'remote',
+        user: {
+          ...structuredClone(defaultNuvaPublicConfig.auth.user),
           remote: {
-            ...structuredClone(defaultNuvaPublicConfig.auth.permission.remote),
-            profile: serializeNuvaRemoteRequest({ url: '/api/profile' }),
-            profileResolver: true,
+            ...structuredClone(defaultNuvaPublicConfig.auth.user.remote),
+            request: serializeNuvaRemoteRequest({ url: '/api/profile' }),
+            resolver: true,
           },
-        },
-        accessMenu: {
-          ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          source: 'profile',
         },
       },
     }
-    useNuvaAuthResolvers().value.profile = vi.fn(async () => {
+    useNuvaAuthResolvers().value.user = vi.fn(async () => {
       throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
     })
 

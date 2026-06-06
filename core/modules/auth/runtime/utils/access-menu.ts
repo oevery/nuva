@@ -1,6 +1,6 @@
 import type { NuvaAccessMenuItem, NuvaPermissionMatchMode } from '../../../../config'
 import { resolveRouteAccessMeta } from './route-access'
-import { toRecord, toStringList } from './shared'
+import { toStringList } from './shared'
 
 type MenuInput = Record<string, unknown>
 

@@ -1,6 +1,6 @@
+import { getErrorStatus } from '../../../auth/runtime/utils/shared'
 import { useBetterAuthClient } from '../composables/useBetterAuthClient'
 import { getBetterAuthActiveOrganizationId } from '../utils/permission-state'
-import { getErrorStatus } from '../../../auth/runtime/utils/shared'
 
 interface BetterAuthSessionState {
   data: unknown

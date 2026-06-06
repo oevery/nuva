@@ -1,5 +1,5 @@
 import type { NuvaPublicConfig, NuvaResolvedConfig } from '../../../../config'
-import { parseNuvaRemoteRequest } from '../../../../config'
+import { parseNuvaRemoteMap, parseNuvaRemoteRequest } from '../../../../config'
 import { useNuvaAuthResolvers } from '../../../auth/runtime/internal/useNuvaAuthResolvers'
 
 export function useNuvaConfig() {
@@ -10,19 +10,28 @@ export function useNuvaConfig() {
     ...config,
     auth: {
       ...config.auth,
+      user: {
+        ...config.auth.user,
+        remote: {
+          ...config.auth.user.remote,
+          request: parseNuvaRemoteRequest(config.auth.user.remote.request),
+          map: parseNuvaRemoteMap(config.auth.user.remote.map),
+        },
+      },
       permission: {
         ...config.auth.permission,
         remote: {
           ...config.auth.permission.remote,
-          profile: parseNuvaRemoteRequest(config.auth.permission.remote.profile),
-          permission: parseNuvaRemoteRequest(config.auth.permission.remote.permission),
+          request: parseNuvaRemoteRequest(config.auth.permission.remote.request),
+          map: parseNuvaRemoteMap(config.auth.permission.remote.map),
         },
       },
       accessMenu: {
         ...config.auth.accessMenu,
         remote: {
           ...config.auth.accessMenu.remote,
-          menu: parseNuvaRemoteRequest(config.auth.accessMenu.remote.menu),
+          request: parseNuvaRemoteRequest(config.auth.accessMenu.remote.request),
+          map: parseNuvaRemoteMap(config.auth.accessMenu.remote.map),
         },
       },
     },

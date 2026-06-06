@@ -2,6 +2,7 @@ import { defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../confi
 import { resetAuthAdapters } from '../../modules/auth/runtime/adapters/registry'
 import { usePermission } from '../../modules/auth/runtime/composables/usePermission'
 import { useNuvaAuthResolvers } from '../../modules/auth/runtime/internal/useNuvaAuthResolvers'
+import { useTokenAuth } from '../../modules/auth/runtime/internal/useTokenAuth'
 import { clearBetterAuthPermissionCache, registerBetterAuthAdapter } from '../../modules/better-auth/runtime/adapter'
 
 const betterAuthClient = vi.hoisted(() => ({
@@ -70,14 +71,45 @@ describe('usePermission', () => {
     })
   })
 
+  it('does not use local permissions before remote permission is loaded', () => {
+    useRuntimeConfig().public.nuva.auth.permission.source = 'remote'
+
+    const permission = usePermission()
+
+    expect(permission.loaded.value).toBe(false)
+    expect(permission.can('dashboard:view')).toBe(false)
+    expect(permission.hasRole('admin')).toBe(false)
+    expect(permission.hasScope('organizationId')).toBe(false)
+  })
+
+  it('reuses permissions synced from user when no permission endpoint is configured', async () => {
+    useRuntimeConfig().public.nuva.auth.permission.source = 'remote'
+    const auth = useTokenAuth<{ id: string, roles: string[], permissions: string[] }>()
+
+    auth.loginWithToken('token-1', {
+      id: 'user-1',
+      roles: ['manager'],
+      permissions: ['report:read'],
+    })
+
+    const permission = usePermission()
+
+    await expect(permission.ensure()).resolves.toMatchObject({
+      roles: ['manager'],
+      permissions: ['report:read'],
+      source: 'remote',
+    })
+    expect(permission.can('report:read')).toBe(true)
+  })
+
   it('refreshes remote permission through resolver and caches the permission state', async () => {
     useRuntimeConfig().public.nuva.auth.permission = {
       ...structuredClone(defaultNuvaPublicConfig.auth.permission),
       source: 'remote',
       remote: {
         ...structuredClone(defaultNuvaPublicConfig.auth.permission.remote),
-        permission: serializeNuvaRemoteRequest({ url: '/api/permission' }),
-        permissionResolver: true,
+        request: serializeNuvaRemoteRequest({ url: '/api/permission' }),
+        resolver: true,
         cacheMaxAge: 60_000,
       },
     }
@@ -111,8 +143,8 @@ describe('usePermission', () => {
       source: 'remote',
       remote: {
         ...structuredClone(defaultNuvaPublicConfig.auth.permission.remote),
-        permission: serializeNuvaRemoteRequest({ url: '/api/permission' }),
-        permissionResolver: true,
+        request: serializeNuvaRemoteRequest({ url: '/api/permission' }),
+        resolver: true,
         cacheMaxAge: 60_000,
       },
     }
@@ -127,48 +159,11 @@ describe('usePermission', () => {
     const permission = usePermission()
 
     expect(permission.can('article:update')).toBe(false)
+    expect(permission.can('dashboard:view')).toBe(false)
     await expect(permission.canAsync('article:update')).resolves.toBe(true)
     await expect(permission.anyAsync(['missing', 'article:publish'])).resolves.toBe(true)
     await expect(permission.allAsync(['article:update', 'article:publish'])).resolves.toBe(true)
     expect(permissionResolver).toHaveBeenCalledTimes(1)
-  })
-
-  it('uses local permission as hybrid fallback before remote refresh updates state', async () => {
-    useRuntimeConfig().public.nuva.auth.permission = {
-      ...structuredClone(defaultNuvaPublicConfig.auth.permission),
-      source: 'hybrid',
-      local: {
-        roles: ['viewer'],
-        permissions: ['dashboard:view'],
-        scope: { organizationId: 'local-org' },
-        dataAccess: { type: 'self' },
-        source: 'local',
-      },
-      remote: {
-        ...structuredClone(defaultNuvaPublicConfig.auth.permission.remote),
-        permission: serializeNuvaRemoteRequest({ url: '/api/permission' }),
-        permissionResolver: true,
-      },
-    }
-    useNuvaAuthResolvers().value.permission = vi.fn(async () => ({
-      roles: ['admin'],
-      permissions: ['admin:read'],
-      scope: { organizationId: 'remote-org' },
-      dataAccess: { type: 'organization' as const, values: ['remote-org'] },
-    }))
-
-    const permission = usePermission()
-
-    expect(permission.loaded.value).toBe(true)
-    expect(permission.can('dashboard:view')).toBe(true)
-    expect(permission.hasRole('viewer')).toBe(true)
-
-    await permission.ensure()
-
-    expect(permission.can('dashboard:view')).toBe(false)
-    expect(permission.can('admin:read')).toBe(true)
-    expect(permission.hasRole('admin')).toBe(true)
-    expect(permission.scope.value).toEqual({ organizationId: 'remote-org' })
   })
 
   it('delegates better-auth role and permission checks to the organization client', async () => {

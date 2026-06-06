@@ -4,6 +4,7 @@ import { clearNuvaAuthDerivedState } from '../internal/clearAuthState'
 import { useAuthRedirect } from '../internal/redirect'
 import { useAccessMenuState } from '../internal/useAccessMenuState'
 import { usePermissionState } from '../internal/usePermissionState'
+import { clearNuvaRemoteRequestCache, useRemoteRequestRuntimeContext } from '../utils/remote'
 
 export function useAuth<TUser = unknown>() {
   const config = useNuvaConfig().auth
@@ -11,6 +12,7 @@ export function useAuth<TUser = unknown>() {
   const redirect = useAuthRedirect()
   const accessMenuState = useAccessMenuState()
   const permissionState = usePermissionState()
+  const remoteRequestRuntime = useRemoteRequestRuntimeContext()
 
   async function refresh() {
     await adapter.ensureAuthenticated?.()
@@ -18,6 +20,7 @@ export function useAuth<TUser = unknown>() {
 
   async function logout() {
     await adapter.logout()
+    clearNuvaRemoteRequestCache(remoteRequestRuntime.cache)
     clearNuvaAuthDerivedState({ accessMenuState, permissionState })
   }
 

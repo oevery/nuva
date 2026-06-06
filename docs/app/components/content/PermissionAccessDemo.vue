@@ -26,7 +26,7 @@ const demos: Demo[] = [
     label: 'Token + getInfo',
     title: 'Token + 用户信息接口',
     description: '国内后台最常见：登录拿 token，用户信息接口一次返回角色、按钮权限、作用域和数据权限。',
-    points: ['推荐优先选择', '接口形态接近 /getInfo', '适合菜单和按钮权限一起下发'],
+    points: ['推荐优先选择', '接口形态接近 /getInfo', '同 request 会自动去重'],
     snippets: [
       {
         id: 'config',
@@ -35,13 +35,28 @@ const demos: Demo[] = [
   auth: {
     provider: 'token',
     global: true,
+    user: {
+      remote: {
+        request: { url: '/auth/getInfo' },
+      },
+    },
     permission: {
       source: 'remote',
       remote: {
-        profile: {
-          url: '/auth/getInfo',
-          method: 'GET',
+        request: { url: '/auth/getInfo' },
+        map: {
+          roles: 'roles',
+          permissions: 'permissions',
+          scope: 'scope',
+          dataAccess: 'dataAccess',
         },
+      },
+    },
+    accessMenu: {
+      source: 'remote',
+      remote: {
+        request: { url: '/auth/getInfo' },
+        map: 'menus',
       },
     },
   },
@@ -86,7 +101,7 @@ const demos: Demo[] = [
     label: '独立权限接口',
     title: 'Token + 权限接口',
     description: '用户信息和权限接口分离，适合权限需要高频刷新或权限服务独立维护的系统。',
-    points: ['登录态仍用 token', '权限只从 remote.permission 读取', '适合独立权限中心'],
+    points: ['登录态仍用 token', '权限只从 remote.request 读取', '适合独立权限中心'],
     snippets: [
       {
         id: 'config',
@@ -97,7 +112,7 @@ const demos: Demo[] = [
     permission: {
       source: 'remote',
       remote: {
-        permission: {
+        request: {
           url: '/auth/permissions',
         },
       },
@@ -188,61 +203,6 @@ const canCreateUser = computed(() => {
     ],
   },
   {
-    id: 'hybrid',
-    label: 'Hybrid',
-    title: '本地兜底 + 远程刷新',
-    description: '本地权限先让基础菜单可用，远程接口刷新真实权限，适合首屏体验和开发兜底。',
-    points: ['本地权限只做兜底', '远程权限作为真实授权', '适合需要平滑首屏的后台'],
-    snippets: [
-      {
-        id: 'config',
-        label: 'nuva.config.ts',
-        code: `export default defineNuvaConfig({
-  auth: {
-    provider: 'token',
-    permission: {
-      source: 'hybrid',
-      local: {
-        permissions: ['dashboard:read'],
-      },
-      remote: {
-        profile: {
-          url: '/auth/getInfo',
-        },
-      },
-    },
-  },
-})`,
-      },
-      {
-        id: 'page',
-        label: '页面权限',
-        code: `definePageMeta({
-  auth: {
-    permissions: ['dashboard:read'],
-  },
-})`,
-      },
-      {
-        id: 'button',
-        label: '按钮权限',
-        code: `const permission = usePermission()
-
-await permission.ensure()
-permission.can('dashboard:export')`,
-      },
-      {
-        id: 'server',
-        label: '服务端鉴权',
-        code: `export default defineNuvaPermissionHandler({
-  permission: 'dashboard:export',
-}, (event, auth) => {
-  return exportDashboard(event, auth)
-})`,
-      },
-    ],
-  },
-  {
     id: 'better-auth',
     label: 'Better Auth',
     title: 'Better Auth session + 动态权限',
@@ -307,7 +267,7 @@ const session = await auth.api.getSession({ headers })
         常见权限接入方式
       </p>
       <p class="max-w-3xl text-sm leading-6 text-toned">
-        按场景直接复制最小配置。多数后台从 Token + getInfo 开始，复杂场景再切到独立权限接口、Hybrid 或 Better Auth。
+        按场景直接复制最小配置。多数后台从 Token + getInfo 开始，复杂场景再切到独立权限接口或 Better Auth。
       </p>
     </div>
 

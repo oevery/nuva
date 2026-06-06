@@ -54,10 +54,17 @@ describe('nuxt module setup', () => {
         provider: 'token',
         loginPath: '/sign-in',
         publicRoutes: ['/sign-in', '/public', '/public'],
+        user: {
+          remote: {
+            request: {
+              url: '/api/me',
+            },
+          },
+        },
         permission: {
           source: 'remote',
           remote: {
-            permission: {
+            request: {
               url: '/api/permission',
             },
           },
@@ -65,7 +72,7 @@ describe('nuxt module setup', () => {
         accessMenu: {
           source: 'remote',
           remote: {
-            menu: {
+            request: {
               url: '/api/menus',
             },
           },
@@ -81,10 +88,10 @@ describe('nuxt module setup', () => {
     expect(auth.publicRoutes).toContain('/public')
     expect(new Set(auth.publicRoutes).size).toBe(auth.publicRoutes.length)
     expect(auth.permission.source).toBe('remote')
-    expect(auth.permission.remote.profile).toBe('')
-    expect(auth.permission.remote.permission).toContain('/api/permission')
+    expect(auth.user.remote.request).toContain('/api/me')
+    expect(auth.permission.remote.request).toContain('/api/permission')
     expect(auth.accessMenu.source).toBe('remote')
-    expect(auth.accessMenu.remote.menu).toContain('/api/menus')
+    expect(auth.accessMenu.remote.request).toContain('/api/menus')
     expect(kit.addPluginTemplate).toHaveBeenCalledWith(expect.objectContaining({
       filename: 'nuva/resolvers.plugin.mjs',
     }))
@@ -208,7 +215,7 @@ describe('nuxt module setup', () => {
           permission: {
             source: 'remote',
             remote: {
-              profile: {
+              request: {
                 url: '/demo-auth/me',
               },
             },

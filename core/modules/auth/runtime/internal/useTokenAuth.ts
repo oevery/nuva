@@ -1,11 +1,10 @@
-import type { NuvaProfileResolver } from '../../../../config'
+import type { NuvaUserResolver } from '../../../../config'
 import { useState } from 'nuxt/app'
 import { computed } from 'vue'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
-import { hasAccessMenus, normalizeAccessMenus } from '../utils/access-menu'
 import { hasPermissionState, resolvePermissionState } from '../utils/permission'
-import { fetchRemoteUser } from '../utils/remote'
-import { isAuthStatusError, isFresh, isRemotePermissionSource } from '../utils/shared'
+import { clearNuvaRemoteRequestCache, fetchRemotePermission, fetchRemoteUser, getRemoteRequestKey, toPermissionState, useRemoteRequestRuntimeContext } from '../utils/remote'
+import { isAuthStatusError, isFresh } from '../utils/shared'
 import { clearNuvaAuthDerivedState } from './clearAuthState'
 import { useAccessMenuState } from './useAccessMenuState'
 import { useNuvaAuthResolvers } from './useNuvaAuthResolvers'
@@ -31,9 +30,11 @@ export function useTokenAuth<TUser = unknown>() {
   const resolvers = useNuvaAuthResolvers()
   const accessMenuState = useAccessMenuState()
   const permissionState = usePermissionState()
+  const remoteRequestRuntime = useRemoteRequestRuntimeContext()
   const { token, isAuthenticated: hasToken, setToken: setStoredToken, clearToken: clearStoredToken } = useTokenStore()
 
   function clearSessionState() {
+    clearNuvaRemoteRequestCache(remoteRequestRuntime.cache)
     clearNuvaAuthDerivedState({ accessMenuState, permissionState })
     setUser(null)
   }
@@ -61,7 +62,7 @@ export function useTokenAuth<TUser = unknown>() {
   }
 
   function syncPermissionFromUser(user: TUser | null, authConfig = useNuvaConfig().auth) {
-    if (hasPermissionState(user)) {
+    if (authConfig.permission.source === 'remote' && hasPermissionState(user)) {
       permissionState.value.permission = resolvePermissionState(user, authConfig.permission.local, authConfig.permission.source)
       permissionState.value.loadedAt = Date.now()
       return
@@ -71,43 +72,42 @@ export function useTokenAuth<TUser = unknown>() {
     permissionState.value.loadedAt = 0
   }
 
-  function syncAccessMenuFromUser(user: TUser | null, authConfig = useNuvaConfig().auth) {
-    if (authConfig.accessMenu.source !== 'profile') {
-      return
-    }
-
-    if (hasAccessMenus(user)) {
-      accessMenuState.value.menus = normalizeAccessMenus(user)
-      accessMenuState.value.loadedAt = Date.now()
-      return
-    }
-
-    accessMenuState.value.menus = []
-    accessMenuState.value.loadedAt = 0
-  }
-
   async function refreshUser() {
     const authConfig = useNuvaConfig().auth
-    const request = authConfig.permission.remote.profile
+    const remote = authConfig.user.remote
 
-    if (!request?.url && !authConfig.permission.remote.profileResolver) {
+    if (!remote.request?.url && !remote.resolver) {
       state.value.ready = true
       return state.value.user
     }
 
-    const user = await fetchRemoteUser<TUser>(authConfig, request, resolvers.value.profile as NuvaProfileResolver<TUser> | null)
+    const user = await fetchRemoteUser<TUser>(authConfig, remote.request, resolvers.value.user as NuvaUserResolver<TUser> | null, {
+      cacheMaxAge: remote.cacheMaxAge,
+      force: true,
+      runtime: remoteRequestRuntime,
+    })
     setUser(user)
 
     syncPermissionFromUser(user, authConfig)
-    syncAccessMenuFromUser(user, authConfig)
+
+    if (authConfig.permission.source === 'remote' && authConfig.permission.remote.request?.url) {
+      const permission = await fetchRemotePermission(authConfig, authConfig.permission.remote.request, resolvers.value.permission, {
+        cacheMaxAge: authConfig.permission.remote.cacheMaxAge,
+        reuseCached: getRemoteRequestKey(authConfig.permission.remote.request) === getRemoteRequestKey(remote.request),
+        runtime: remoteRequestRuntime,
+        map: authConfig.permission.remote.map,
+      })
+      permissionState.value.permission = toPermissionState(permission, authConfig)
+      permissionState.value.loadedAt = Date.now()
+    }
 
     return user
   }
 
   async function ensureUser() {
     const authConfig = useNuvaConfig().auth
-    const shouldRefresh = isRemotePermissionSource(authConfig.permission.source)
-    const fresh = isFresh(state.value.checkedAt, authConfig.permission.remote.cacheMaxAge)
+    const shouldRefresh = !!authConfig.user.remote.request?.url || authConfig.user.remote.resolver
+    const fresh = isFresh(state.value.checkedAt, authConfig.user.remote.cacheMaxAge)
 
     if (state.value.ready && (!shouldRefresh || fresh)) {
       return state.value.user
@@ -141,7 +141,6 @@ export function useTokenAuth<TUser = unknown>() {
       setUser(user)
       const authConfig = useNuvaConfig().auth
       syncPermissionFromUser(user, authConfig)
-      syncAccessMenuFromUser(user, authConfig)
     }
   }
 

@@ -1,9 +1,8 @@
 import { defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../config'
-import { resetAuthAdapters } from '../../modules/auth/runtime/adapters/registry'
+import { registerAccessMenuAdapter, resetAuthAdapters } from '../../modules/auth/runtime/adapters/registry'
 import { useAccessMenu } from '../../modules/auth/runtime/composables/useAccessMenu'
 import { useAccessMenuState } from '../../modules/auth/runtime/internal/useAccessMenuState'
 import { useNuvaAuthResolvers } from '../../modules/auth/runtime/internal/useNuvaAuthResolvers'
-import { useTokenAuth } from '../../modules/auth/runtime/internal/useTokenAuth'
 import { normalizeAccessMenus } from '../../modules/auth/runtime/utils/access-menu'
 import { registerBetterAuthAdapter } from '../../modules/better-auth/runtime/adapter'
 
@@ -63,7 +62,7 @@ describe('useAccessMenu', () => {
         },
         accessMenu: {
           ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-          source: 'profile',
+          source: 'remote',
         },
       },
     }
@@ -91,21 +90,15 @@ describe('useAccessMenu', () => {
     ])
   })
 
-  it('syncs menus from profile and prunes by routes and permissions', () => {
-    const auth = useTokenAuth()
+  it('sets adapter menus and prunes by routes and permissions', () => {
     const accessMenu = useAccessMenu()
 
-    auth.loginWithToken('token-1', {
-      id: 'user-1',
-      roles: ['admin'],
-      permissions: ['dashboard:view', 'report:read'],
-      menus: [
-        { id: 'dashboard', title: 'Dashboard', path: '/dashboard', order: 2 },
-        { id: 'missing', title: 'Missing', path: '/missing' },
-        { id: 'docs', title: 'Docs', path: 'https://example.com' },
-        { id: 'group', title: 'Group', children: [{ id: 'users', title: 'Users', path: '/users' }] },
-      ],
-    })
+    accessMenu.setMenus([
+      { id: 'dashboard', title: 'Dashboard', path: '/dashboard', order: 2 },
+      { id: 'missing', title: 'Missing', path: '/missing' },
+      { id: 'docs', title: 'Docs', path: 'https://example.com' },
+      { id: 'group', title: 'Group', children: [{ id: 'users', title: 'Users', path: '/users' }] },
+    ])
 
     expect(useAccessMenuState().value.menus).toHaveLength(4)
     expect(accessMenu.menus.value.map(item => item.id)).toEqual(['docs', 'group', 'dashboard'])
@@ -129,11 +122,11 @@ describe('useAccessMenu', () => {
     useRuntimeConfig().public.nuva.auth.accessMenu = {
       ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
       source: 'remote',
-      cacheMaxAge: 60_000,
       remote: {
         ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu.remote),
-        menu: serializeNuvaRemoteRequest({ url: '/api/menus' }),
-        menuResolver: true,
+        request: serializeNuvaRemoteRequest({ url: '/api/menus' }),
+        resolver: true,
+        cacheMaxAge: 60_000,
       },
     }
     const resolver = vi.fn(async () => ({
@@ -151,14 +144,39 @@ describe('useAccessMenu', () => {
     expect(resolver).toHaveBeenCalledTimes(1)
   })
 
+  it('does not inherit global menu cache when remote cache max age is zero', async () => {
+    useRuntimeConfig().public.nuva.auth.accessMenu = {
+      ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
+      source: 'remote',
+      cacheMaxAge: 60_000,
+      remote: {
+        ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu.remote),
+        request: serializeNuvaRemoteRequest({ url: '/api/menus' }),
+        resolver: true,
+        cacheMaxAge: 0,
+      },
+    }
+    const resolver = vi.fn(async () => ([
+      { id: 'dashboard', title: 'Dashboard', path: '/dashboard' },
+    ]))
+    useNuvaAuthResolvers().value.menu = resolver
+
+    const accessMenu = useAccessMenu()
+
+    await accessMenu.ensure()
+    await accessMenu.ensure()
+
+    expect(resolver).toHaveBeenCalledTimes(2)
+  })
+
   it('uses the menu resolver for remote menus', async () => {
     useRuntimeConfig().public.nuva.auth.accessMenu = {
       ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
       source: 'remote',
       remote: {
         ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu.remote),
-        menu: serializeNuvaRemoteRequest({ url: '/api/menus' }),
-        menuResolver: true,
+        request: serializeNuvaRemoteRequest({ url: '/api/menus' }),
+        resolver: true,
       },
     }
     const menuResolver = vi.fn(async () => [{ id: 'reports', title: 'Reports', path: '/reports' }])
@@ -212,12 +230,21 @@ describe('useAccessMenu', () => {
 
   it('can build menus from route meta', () => {
     useRuntimeConfig().public.nuva.auth.accessMenu.source = 'route'
+    useRuntimeConfig().public.nuva.auth.accessMenu.route.mode = 'meta'
     useRuntimeConfig().public.nuva.auth.permission.local.permissions.push('settings:view')
     const accessMenu = useAccessMenu()
 
     expect(accessMenu.menus.value).toEqual([
       expect.objectContaining({ id: 'settings', title: 'Settings', path: '/settings' }),
     ])
+  })
+
+  it('can build mixed route menus without explicit menu meta', () => {
+    useRuntimeConfig().public.nuva.auth.accessMenu.source = 'route'
+    useRuntimeConfig().public.nuva.auth.permission.local.permissions.push('settings:view')
+    const accessMenu = useAccessMenu()
+
+    expect(accessMenu.menus.value.map(item => item.id)).toEqual(['index', 'dashboard', 'users', 'reports', 'settings'])
   })
 
   it('filters menus with better-auth dynamic permissions and active member role', () => {
@@ -234,7 +261,7 @@ describe('useAccessMenu', () => {
       },
       accessMenu: {
         ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
-        source: 'profile',
+        source: 'remote',
       },
       permission: {
         ...structuredClone(defaultNuvaPublicConfig.auth.permission),
@@ -266,5 +293,27 @@ describe('useAccessMenu', () => {
       role: 'viewer',
       permissions: { dashboard: ['view'] },
     })
+  })
+
+  it('loads menus from a custom access menu adapter', async () => {
+    registerAccessMenuAdapter('platform-menu', () => ({
+      menus: computed(() => [
+        { id: 'dashboard', title: 'Dashboard', path: '/dashboard' },
+      ]),
+      loaded: computed(() => true),
+    }))
+    useRuntimeConfig().public.nuva.auth.accessMenu = {
+      ...structuredClone(defaultNuvaPublicConfig.auth.accessMenu),
+      source: 'adapter',
+      adapter: 'platform-menu',
+    }
+    useRuntimeConfig().public.nuva.auth.provider = 'missing-auth-provider'
+
+    const accessMenu = useAccessMenu()
+
+    await expect(accessMenu.ensure()).resolves.toEqual([
+      expect.objectContaining({ id: 'dashboard' }),
+    ])
+    expect(accessMenu.ready.value).toBe(true)
   })
 })

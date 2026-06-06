@@ -2,7 +2,6 @@ import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 import { useAuthAdapter } from '../adapters/registry'
 import { usePermission } from '../composables/usePermission'
 import { useAuthRedirect } from '../internal/redirect'
-import { useTokenAuth } from '../internal/useTokenAuth'
 import { hasRouteAccessMeta, resolveRouteAccessMeta } from './route-access'
 import { getErrorStatus } from './shared'
 
@@ -58,12 +57,11 @@ export function createAuthMiddleware() {
       return
     }
 
-    const tokenAuth = useTokenAuth()
     const permission = usePermission()
     const { toLogin } = useAuthRedirect()
+    const adapter = useAuthAdapter(authConfig.provider)
 
-    if (authConfig.provider !== 'token') {
-      const adapter = useAuthAdapter(authConfig.provider)
+    try {
       const authenticated = adapter.ensureAuthenticated
         ? await adapter.ensureAuthenticated()
         : adapter.isAuthenticated.value
@@ -72,23 +70,14 @@ export function createAuthMiddleware() {
         return toLogin()
       }
     }
-    else {
-      try {
-        await tokenAuth.ensureUser()
-      }
-      catch (error) {
-        const status = getErrorStatus(error)
+    catch (error) {
+      const status = getErrorStatus(error)
 
-        if (status !== 401 && status !== 403) {
-          throw error
-        }
-
-        return toLogin()
+      if (status !== 401 && status !== 403) {
+        throw error
       }
 
-      if (!tokenAuth.isAuthenticated.value) {
-        return toLogin()
-      }
+      return toLogin()
     }
 
     const roleMode = accessMeta.roleMode || authConfig.permission.roleMode

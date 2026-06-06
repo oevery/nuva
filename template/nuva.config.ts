@@ -8,14 +8,28 @@ export default defineNuvaConfig({
     redirectQuery: 'redirect',
     global: true,
     publicRoutes: ['/login'],
+    user: {
+      remote: {
+        request: {
+          url: '/demo-auth/me',
+        },
+        cacheMaxAge: 30_000,
+      },
+    },
     permission: {
       source: 'remote',
       forbiddenPath: '/403',
       permissionMode: 'all',
       roleMode: 'any',
       remote: {
-        profile: {
+        request: {
           url: '/demo-auth/me',
+        },
+        map: {
+          roles: 'roles',
+          permissions: 'permissions',
+          scope: 'scope',
+          dataAccess: 'dataAccess',
         },
         cacheMaxAge: 0,
       },
@@ -23,7 +37,7 @@ export default defineNuvaConfig({
     accessMenu: {
       source: 'remote',
       remote: {
-        menu: {
+        request: {
           url: '/demo-auth/menus',
         },
       },

@@ -1,8 +1,8 @@
-import type { NuvaAuthConfig, NuvaConfigFile, NuvaModuleOptions, NuvaPermissionConfig, NuvaPermissionSource, NuvaRemoteAccessMenuOptions, NuvaRemotePermissionOptions } from '../../config'
+import type { NuvaAuthConfig, NuvaConfigFile, NuvaModuleOptions, NuvaRemoteCapabilityOptions } from '../../config'
 import process from 'node:process'
 import { addImports, addPluginTemplate, createResolver, defineNuxtModule, importModule, resolvePath } from '@nuxt/kit'
 import { defu } from 'defu'
-import { defaultNuvaAuthConfig, defaultNuvaPublicConfig, serializeNuvaRemoteRequest } from '../../config'
+import { defaultNuvaAuthConfig, defaultNuvaPublicConfig, serializeNuvaRemoteMap, serializeNuvaRemoteRequest } from '../../config'
 
 async function loadNuvaConfig(rootDir: string, configFile = 'nuva.config.ts') {
   const resolvedPath = await resolvePath(configFile, {
@@ -19,10 +19,6 @@ async function loadNuvaConfig(rootDir: string, configFile = 'nuva.config.ts') {
   })
 }
 
-function isRemotePermissionSource(source: NuvaPermissionSource) {
-  return source === 'remote' || source === 'hybrid'
-}
-
 function normalizeBasePath(basePath: string) {
   const trimmed = basePath.trim()
 
@@ -34,30 +30,14 @@ function normalizeBasePath(basePath: string) {
   return normalized === '/' ? normalized : normalized.replace(/\/+$/, '')
 }
 
-function normalizeRemoteOptions(remote: NuvaRemotePermissionOptions) {
-  const profile = remote.profile || null
-  const permission = remote.permission || null
+function normalizeRemoteOptions(remote: NuvaRemoteCapabilityOptions) {
+  const request = remote.request || null
 
-  if (profile && !profile.method) {
-    profile.method = 'GET'
+  if (request && !request.method) {
+    request.method = 'GET'
   }
 
-  if (permission && !permission.method) {
-    permission.method = 'GET'
-  }
-
-  remote.profile = profile
-  remote.permission = permission
-}
-
-function normalizeRemoteAccessMenuOptions(remote: NuvaRemoteAccessMenuOptions) {
-  const menu = remote.menu || null
-
-  if (menu && !menu.method) {
-    menu.method = 'GET'
-  }
-
-  remote.menu = menu
+  remote.request = request
 }
 
 function normalizeBetterAuthConfig(authConfig: NuvaAuthConfig) {
@@ -77,14 +57,6 @@ function normalizeAuthConfig(authConfig: NuvaAuthConfig) {
   normalizeBetterAuthConfig(authConfig)
 }
 
-function hasLocalPermissions(permission: NuvaPermissionConfig) {
-  return !!(
-    permission.local.roles.length
-    || permission.local.permissions.length
-    || Object.keys(permission.local.scope || {}).length
-  )
-}
-
 function hasRuntimeRemoteRequest(request: string) {
   return !!request
 }
@@ -98,29 +70,17 @@ function assertAuthSecurityConfig(authConfig: NuvaAuthConfig) {
     console.warn('[nuva/auth] auth.permission.source is "local" in production. Use remote, adapter, or ensure static permissions are intentional.')
   }
 
-  if (authConfig.permission.source === 'hybrid' && hasLocalPermissions(authConfig.permission)) {
-    console.warn('[nuva/auth] auth.permission.source is "hybrid" with local fallback permissions in production. Ensure fallback permissions cannot bypass server-side authorization.')
-  }
-
-  if (authConfig.permission.remote.profile.includes('/demo-auth') || authConfig.permission.remote.permission.includes('/demo-auth') || authConfig.accessMenu.remote.menu.includes('/demo-auth')) {
+  if (authConfig.user.remote.request.includes('/demo-auth') || authConfig.permission.remote.request.includes('/demo-auth') || authConfig.accessMenu.remote.request.includes('/demo-auth')) {
     throw new Error('[nuva/auth] demo auth endpoints cannot be used in production. Replace /demo-auth endpoints with real authentication and permission APIs before deployment.')
   }
 }
 
-function createRuntimeRemoteConfig(remote: NuvaRemotePermissionOptions) {
+function createRuntimeRemoteConfig(remote: NuvaRemoteCapabilityOptions) {
   return {
-    profile: serializeNuvaRemoteRequest(remote.profile),
-    permission: serializeNuvaRemoteRequest(remote.permission),
-    profileResolver: false,
-    permissionResolver: false,
+    request: serializeNuvaRemoteRequest(remote.request),
+    resolver: false,
+    map: serializeNuvaRemoteMap(remote.map),
     cacheMaxAge: remote.cacheMaxAge || 0,
-  }
-}
-
-function createRuntimeRemoteAccessMenuConfig(remote: NuvaRemoteAccessMenuOptions) {
-  return {
-    menu: serializeNuvaRemoteRequest(remote.menu),
-    menuResolver: false,
   }
 }
 
@@ -161,26 +121,28 @@ export default defineNuxtModule<NuvaModuleOptions>({
       currentAuthConfig || {},
       defaultNuvaAuthConfig,
     ) as NuvaAuthConfig & {
-      permission: Omit<NuvaPermissionConfig, 'remote'> & {
-        remote: NuvaRemotePermissionOptions
-      }
-      accessMenu: Omit<NuvaAuthConfig['accessMenu'], 'remote'> & {
-        remote: NuvaRemoteAccessMenuOptions
-      }
+      user: Omit<NuvaAuthConfig['user'], 'remote'> & { remote: NuvaRemoteCapabilityOptions }
+      permission: Omit<NuvaAuthConfig['permission'], 'remote'> & { remote: NuvaRemoteCapabilityOptions }
+      accessMenu: Omit<NuvaAuthConfig['accessMenu'], 'remote'> & { remote: NuvaRemoteCapabilityOptions }
     }
 
+    normalizeRemoteOptions(authOptions.user.remote)
     normalizeRemoteOptions(authOptions.permission.remote)
-    normalizeRemoteAccessMenuOptions(authOptions.accessMenu.remote)
+    normalizeRemoteOptions(authOptions.accessMenu.remote)
 
     const authConfig = {
       ...authOptions,
+      user: {
+        ...authOptions.user,
+        remote: createRuntimeRemoteConfig(authOptions.user.remote),
+      },
       permission: {
         ...authOptions.permission,
         remote: createRuntimeRemoteConfig(authOptions.permission.remote),
       },
       accessMenu: {
         ...authOptions.accessMenu,
-        remote: createRuntimeRemoteAccessMenuConfig(authOptions.accessMenu.remote),
+        remote: createRuntimeRemoteConfig(authOptions.accessMenu.remote),
       },
     } satisfies NuvaAuthConfig
 
@@ -189,10 +151,10 @@ export default defineNuxtModule<NuvaModuleOptions>({
       ...(authConfig.publicRoutes || []),
     ]))
 
-    const profileResolverImport = await resolveResolverImport(
+    const userResolverImport = await resolveResolverImport(
       nuxt.options.rootDir,
-      options.resolvers?.profile || fileConfig?.resolvers?.profile,
-      'app/nuva/profile-resolver.ts',
+      options.resolvers?.user || fileConfig?.resolvers?.user,
+      'app/nuva/user-resolver.ts',
     )
     const permissionResolverImport = await resolveResolverImport(
       nuxt.options.rootDir,
@@ -208,17 +170,16 @@ export default defineNuxtModule<NuvaModuleOptions>({
     normalizeAuthConfig(authConfig)
     assertAuthSecurityConfig(authConfig)
 
-    const hasProfileRequest = hasRuntimeRemoteRequest(authConfig.permission.remote.profile)
-    const hasPermissionRequest = hasRuntimeRemoteRequest(authConfig.permission.remote.permission)
+    const hasPermissionRequest = hasRuntimeRemoteRequest(authConfig.permission.remote.request)
+    const hasMenuRequest = hasRuntimeRemoteRequest(authConfig.accessMenu.remote.request)
 
-    authConfig.permission.remote.profileResolver = !!profileResolverImport
-      && isRemotePermissionSource(authConfig.permission.source)
-      && (hasProfileRequest || !hasPermissionRequest)
-    authConfig.permission.remote.permissionResolver = !!permissionResolverImport
-      && isRemotePermissionSource(authConfig.permission.source)
-      && (hasPermissionRequest || !hasProfileRequest)
-    authConfig.accessMenu.remote.menuResolver = !!menuResolverImport
+    authConfig.user.remote.resolver = !!userResolverImport
+    authConfig.permission.remote.resolver = !!permissionResolverImport
+      && authConfig.permission.source === 'remote'
+      && (hasPermissionRequest || !!permissionResolverImport)
+    authConfig.accessMenu.remote.resolver = !!menuResolverImport
       && authConfig.accessMenu.source === 'remote'
+      && (hasMenuRequest || !!menuResolverImport)
 
     const apiConfig = defu(
       options.api || {},
@@ -242,19 +203,19 @@ export default defineNuxtModule<NuvaModuleOptions>({
       filename: 'nuva/resolvers.plugin.mjs',
       getContents: () => {
         const lines = [
-          profileResolverImport ? `import profileResolver from ${JSON.stringify(profileResolverImport)}` : 'const profileResolver = null',
+          userResolverImport ? `import userResolver from ${JSON.stringify(userResolverImport)}` : 'const userResolver = null',
           permissionResolverImport ? `import permissionResolver from ${JSON.stringify(permissionResolverImport)}` : 'const permissionResolver = null',
           menuResolverImport ? `import menuResolver from ${JSON.stringify(menuResolverImport)}` : 'const menuResolver = null',
           '',
           'export default defineNuxtPlugin(() => {',
           '  const resolvers = useState(\'nuva:auth:resolvers\', () => ({',
-          '    profile: profileResolver,',
+          '    user: userResolver,',
           '    permission: permissionResolver,',
           '    menu: menuResolver,',
           '  }))',
           '',
           '  resolvers.value = {',
-          '    profile: profileResolver,',
+          '    user: userResolver,',
           '    permission: permissionResolver,',
           '    menu: menuResolver,',
           '  }',

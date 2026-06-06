@@ -22,7 +22,7 @@ export default defineNuxtConfig({
             source: 'remote',
             forbiddenPath: '/403',
             remote: {
-              permission: {
+              request: {
                 url: '/api/permission',
               },
             },

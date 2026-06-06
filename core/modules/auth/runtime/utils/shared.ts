@@ -38,7 +38,7 @@ export function isAuthStatusError(error: unknown) {
 }
 
 export function isRemotePermissionSource(source: NuvaPermissionState['source']) {
-  return source === 'remote' || source === 'hybrid'
+  return source === 'remote'
 }
 
 export function isAdapterPermissionSource(source: NuvaPermissionState['source']) {

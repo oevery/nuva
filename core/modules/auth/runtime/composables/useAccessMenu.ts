@@ -2,12 +2,9 @@ import type { RouteRecordNormalized } from 'vue-router'
 import type { NuvaAccessMenuItem } from '../../../../config'
 import { useRouter } from 'vue-router'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
-import { useAccessMenuState } from '../internal/useAccessMenuState'
-import { useNuvaAuthResolvers } from '../internal/useNuvaAuthResolvers'
-import { firstAccessMenuNumber, firstAccessMenuString, normalizeAccessMenus, toAccessMenuList, validateAccessMenus } from '../utils/access-menu'
-import { fetchRemoteAccessMenu } from '../utils/remote'
+import { useAccessMenuAdapter } from '../adapters/registry'
+import { validateAccessMenus } from '../utils/access-menu'
 import { resolveRouteAccessMeta } from '../utils/route-access'
-import { fallbackValue, isFresh, toMatchMode, toRecord } from '../utils/shared'
 import { usePermission } from './usePermission'
 
 type AccessCheck = Pick<NuvaAccessMenuItem, 'roles' | 'permissions' | 'scopes' | 'roleMode' | 'permissionMode'>
@@ -45,39 +42,6 @@ function getRouteAccess(route?: RouteRecordNormalized | null): AccessCheck {
     roleMode: access.roleMode,
     permissionMode: access.permissionMode,
   }
-}
-
-function getRouteMenus(routes: RouteRecordNormalized[]): NuvaAccessMenuItem[] {
-  return routes
-    .map<NuvaAccessMenuItem | null>((route) => {
-      const meta = toRecord(route.meta)
-      const menu = meta.menu
-
-      if (!menu) {
-        return null
-      }
-
-      const menuMeta = toRecord(menu)
-      const access = getRouteAccess(route)
-      const name = String(route.name || '')
-
-      return {
-        id: firstAccessMenuString(menuMeta.id, menuMeta.key, name, route.path),
-        title: firstAccessMenuString(menuMeta.title, menuMeta.label, menuMeta.text, name, route.path),
-        path: firstAccessMenuString(menuMeta.path, route.path),
-        name: firstAccessMenuString(menuMeta.name, name),
-        icon: firstAccessMenuString(menuMeta.icon) || undefined,
-        order: firstAccessMenuNumber(menuMeta.order, menuMeta.sort, menuMeta.sortOrder),
-        hidden: menuMeta.hidden === true || menuMeta.hideInMenu === true,
-        roles: toAccessMenuList(fallbackValue(menuMeta.roles, access.roles)),
-        permissions: toAccessMenuList(fallbackValue(menuMeta.permissions, access.permissions)),
-        scopes: toAccessMenuList(fallbackValue(menuMeta.scopes, access.scopes)),
-        roleMode: toMatchMode(menuMeta.roleMode) || access.roleMode,
-        permissionMode: toMatchMode(menuMeta.permissionMode) || access.permissionMode,
-        meta: menuMeta.meta && typeof menuMeta.meta === 'object' ? menuMeta.meta as Record<string, unknown> : undefined,
-      } satisfies NuvaAccessMenuItem
-    })
-    .filter(isAccessMenuItem)
 }
 
 function findRoute(item: NuvaAccessMenuItem, routes: RouteRecordNormalized[]): RouteRecordNormalized | null {
@@ -200,20 +164,25 @@ function filterMenus(items: NuvaAccessMenuItem[], routes: RouteRecordNormalized[
 
 export function useAccessMenu() {
   const config = useNuvaConfig().auth
-  const state = useAccessMenuState()
+  const adapter = useAccessMenuAdapter(config.accessMenu.source)
   const permission = usePermission()
-  const resolvers = useNuvaAuthResolvers()
   const warnedAccessMenuIssues = new Set<string>()
 
-  const rawMenus = computed<NuvaAccessMenuItem[]>(() => sortMenus(config.accessMenu.source === 'route'
-    ? getRouteMenus(useRouter().getRoutes())
-    : state.value.menus))
+  if (!adapter) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: `Nuva access menu adapter "${config.accessMenu.source}" is not registered`,
+    })
+  }
+
+  const accessMenuAdapter = adapter
+  const rawMenus = computed<NuvaAccessMenuItem[]>(() => sortMenus(accessMenuAdapter.rawMenus?.value || accessMenuAdapter.menus.value))
   const menus = computed<NuvaAccessMenuItem[]>(() => {
     const routeList = config.accessMenu.routePrune || config.accessMenu.strictRoute
       ? useRouter().getRoutes()
       : []
 
-    if (config.accessMenu.source !== 'route' && (config.accessMenu.routePrune || config.accessMenu.strictRoute)) {
+    if (config.accessMenu.routePrune || config.accessMenu.strictRoute) {
       warnAccessMenuIssues(rawMenus.value, routeList, config.accessMenu.strictRoute, config.accessMenu.routePrune, warnedAccessMenuIssues)
     }
 
@@ -222,57 +191,22 @@ export function useAccessMenu() {
       : rawMenus.value
   })
 
-  function setMenus(items: unknown) {
-    state.value.menus = normalizeAccessMenus(items)
-    state.value.loadedAt = state.value.menus.length ? Date.now() : 0
-  }
-
-  function clearMenus() {
-    state.value.menus = []
-    state.value.loadedAt = 0
-  }
-
   async function refresh() {
-    if (config.accessMenu.source !== 'remote') {
-      return rawMenus.value
-    }
-
-    const request = config.accessMenu.remote.menu
-
-    if (!request?.url && !config.accessMenu.remote.menuResolver) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: 'Nuva access menu endpoint is not configured',
-      })
-    }
-
-    const result = await fetchRemoteAccessMenu(config, request, resolvers.value.menu)
-    setMenus(result)
-    return rawMenus.value
+    await accessMenuAdapter.refresh?.()
+    return menus.value
   }
 
   async function ensure() {
-    if (config.accessMenu.source === 'none' || config.accessMenu.source === 'route') {
-      return menus.value
-    }
-
-    if (state.value.menus.length && isFresh(state.value.loadedAt, config.accessMenu.cacheMaxAge)) {
-      return menus.value
-    }
-
-    if (config.accessMenu.source === 'remote') {
-      await refresh()
-    }
-
+    await accessMenuAdapter.ensure?.()
     return menus.value
   }
 
   return {
     menus,
     rawMenus,
-    ready: computed(() => config.accessMenu.source === 'none' || state.value.loadedAt > 0 || rawMenus.value.length > 0),
-    setMenus,
-    clearMenus,
+    ready: computed(() => accessMenuAdapter.loaded.value),
+    setMenus: (items: unknown) => accessMenuAdapter.setMenus?.(items),
+    clearMenus: () => accessMenuAdapter.clearMenus?.(),
     refresh,
     ensure,
   }

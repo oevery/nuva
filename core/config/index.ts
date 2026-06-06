@@ -41,12 +41,13 @@ export interface NuvaApiConfig {
 
 export type NuvaAuthProvider = 'token' | 'better-auth' | (string & {})
 
-export type NuvaPermissionSource = 'local' | 'remote' | 'hybrid' | 'adapter'
+export type NuvaPermissionSource = 'local' | 'remote' | 'adapter'
 export type NuvaPermissionMatchMode = 'any' | 'all'
 export type NuvaPermissionDecision = 'allow' | 'deny' | 'unknown'
 export type NuvaPermissionCheckReason = 'allowed' | 'missing-permission' | 'missing-role' | 'missing-scope' | 'unknown'
-export type NuvaAccessMenuSource = 'none' | 'profile' | 'remote' | 'route'
+export type NuvaAccessMenuSource = 'route' | 'local' | 'remote' | 'adapter'
 export type NuvaAccessMenuType = 'route' | 'group' | 'link' | 'action' | 'iframe' | 'remote'
+export type NuvaAccessMenuRouteMode = 'auto' | 'meta' | 'mixed'
 
 export interface NuvaPermissionCheckContext {
   target?: Record<string, unknown>
@@ -117,46 +118,42 @@ export interface NuvaRemoteRequestConfig {
   meta?: Record<string, unknown>
 }
 
+export type NuvaRemoteMap = string | Record<string, string>
+
 export interface NuvaRemoteResolverContext {
   request: NuvaRemoteRequestConfig | null
   config: NuvaResolvedAuthConfig
   requestWith: <T>(request?: NuvaRemoteRequestConfig | null) => Promise<T>
 }
 
-export type NuvaProfileResolver<TUser = unknown> = (context: NuvaRemoteResolverContext) => Promise<TUser>
+export type NuvaUserResolver<TUser = unknown> = (context: NuvaRemoteResolverContext) => Promise<TUser>
 export type NuvaPermissionResolver = (context: NuvaRemoteResolverContext) => Promise<NuvaPermissionState>
 export type NuvaAccessMenuResolver = (context: NuvaRemoteResolverContext) => Promise<NuvaAccessMenuItem[] | { menus?: unknown, menu?: unknown, routes?: unknown }>
 export type NuvaMenuResolver = NuvaAccessMenuResolver
 
-export interface NuvaRemotePermissionConfig {
-  profile: string
-  permission: string
-  profileResolver: boolean
-  permissionResolver: boolean
+export interface NuvaRemoteCapabilityConfig {
+  request: string
+  resolver: boolean
+  map: string
   cacheMaxAge: number
 }
 
-export interface NuvaRemotePermissionOptions extends Omit<NuvaRemotePermissionConfig, 'profile' | 'permission'> {
-  profile?: NuvaRemoteRequestConfig | null
-  permission?: NuvaRemoteRequestConfig | null
+export interface NuvaRemoteCapabilityOptions extends Omit<NuvaRemoteCapabilityConfig, 'request' | 'map'> {
+  request?: NuvaRemoteRequestConfig | null
+  map?: NuvaRemoteMap | null
 }
 
-export interface NuvaRemoteAccessMenuConfig {
-  menu: string
-  menuResolver: boolean
+export interface NuvaResolvedRemoteCapabilityConfig extends Omit<NuvaRemoteCapabilityConfig, 'request' | 'map'> {
+  request: NuvaRemoteRequestConfig | null
+  map: NuvaRemoteMap | null
 }
 
-export interface NuvaRemoteAccessMenuOptions extends Omit<NuvaRemoteAccessMenuConfig, 'menu'> {
-  menu?: NuvaRemoteRequestConfig | null
+export interface NuvaAuthUserConfig {
+  remote: NuvaRemoteCapabilityConfig
 }
 
-export interface NuvaResolvedRemoteAccessMenuConfig extends Omit<NuvaRemoteAccessMenuConfig, 'menu'> {
-  menu: NuvaRemoteRequestConfig | null
-}
-
-export interface NuvaResolvedRemotePermissionConfig extends Omit<NuvaRemotePermissionConfig, 'profile' | 'permission'> {
-  profile: NuvaRemoteRequestConfig | null
-  permission: NuvaRemoteRequestConfig | null
+export interface NuvaResolvedAuthUserConfig extends Omit<NuvaAuthUserConfig, 'remote'> {
+  remote: NuvaResolvedRemoteCapabilityConfig
 }
 
 export interface NuvaPermissionConfig {
@@ -165,24 +162,37 @@ export interface NuvaPermissionConfig {
   permissionMode: NuvaPermissionMatchMode
   roleMode: NuvaPermissionMatchMode
   local: NuvaPermissionState
-  remote: NuvaRemotePermissionConfig
+  remote: NuvaRemoteCapabilityConfig
 }
 
 export interface NuvaResolvedPermissionConfig extends Omit<NuvaPermissionConfig, 'remote'> {
-  remote: NuvaResolvedRemotePermissionConfig
+  remote: NuvaResolvedRemoteCapabilityConfig
+}
+
+export interface NuvaLocalAccessMenuConfig {
+  items: NuvaAccessMenuItem[]
+}
+
+export interface NuvaRouteAccessMenuConfig {
+  mode: NuvaAccessMenuRouteMode
+  includeDynamic: boolean
+  exclude: string[]
 }
 
 export interface NuvaAccessMenuConfig {
   source: NuvaAccessMenuSource
+  adapter: string
   filter: boolean
   routePrune: boolean
   strictRoute: boolean
   cacheMaxAge: number
-  remote: NuvaRemoteAccessMenuConfig
+  local: NuvaLocalAccessMenuConfig
+  route: NuvaRouteAccessMenuConfig
+  remote: NuvaRemoteCapabilityConfig
 }
 
 export interface NuvaResolvedAccessMenuConfig extends Omit<NuvaAccessMenuConfig, 'remote'> {
-  remote: NuvaResolvedRemoteAccessMenuConfig
+  remote: NuvaResolvedRemoteCapabilityConfig
 }
 
 export interface NuvaBetterAuthOrganizationConfig {
@@ -206,12 +216,14 @@ export interface NuvaAuthConfig {
   global: boolean
   publicRoutes: string[]
   token: NuvaAuthTokenConfig
+  user: NuvaAuthUserConfig
   permission: NuvaPermissionConfig
   accessMenu: NuvaAccessMenuConfig
   betterAuth: NuvaBetterAuthConfig
 }
 
-export interface NuvaResolvedAuthConfig extends Omit<NuvaAuthConfig, 'permission' | 'accessMenu'> {
+export interface NuvaResolvedAuthConfig extends Omit<NuvaAuthConfig, 'user' | 'permission' | 'accessMenu'> {
+  user: NuvaResolvedAuthUserConfig
   permission: NuvaResolvedPermissionConfig
   accessMenu: NuvaResolvedAccessMenuConfig
 }
@@ -219,7 +231,7 @@ export interface NuvaResolvedAuthConfig extends Omit<NuvaAuthConfig, 'permission
 export type NuvaAuthResolverEntry = string
 
 export interface NuvaAuthResolvers {
-  profile?: NuvaAuthResolverEntry
+  user?: NuvaAuthResolverEntry
   permission?: NuvaAuthResolverEntry
   menu?: NuvaAuthResolverEntry
 }
@@ -236,13 +248,18 @@ export interface NuvaModuleOptions extends Partial<NuvaConfigFile> {
 
 export type NuvaAuthProjectConfig = NuvaConfigFile
 
-export interface NuvaAuthModuleOptions extends Partial<Omit<NuvaAuthConfig, 'token' | 'betterAuth' | 'permission' | 'accessMenu'>> {
+export interface NuvaAuthModuleOptions extends Partial<Omit<NuvaAuthConfig, 'user' | 'token' | 'betterAuth' | 'permission' | 'accessMenu'>> {
+  user?: {
+    remote?: Partial<NuvaRemoteCapabilityOptions>
+  }
   permission?: Partial<Omit<NuvaPermissionConfig, 'local' | 'remote'>> & {
     local?: Partial<NuvaPermissionState>
-    remote?: Partial<NuvaRemotePermissionOptions>
+    remote?: Partial<NuvaRemoteCapabilityOptions>
   }
-  accessMenu?: Partial<Omit<NuvaAccessMenuConfig, 'remote'>> & {
-    remote?: Partial<NuvaRemoteAccessMenuOptions>
+  accessMenu?: Partial<Omit<NuvaAccessMenuConfig, 'local' | 'route' | 'remote'>> & {
+    local?: Partial<NuvaLocalAccessMenuConfig>
+    route?: Partial<NuvaRouteAccessMenuConfig>
+    remote?: Partial<NuvaRemoteCapabilityOptions>
   }
   betterAuth?: Partial<Omit<NuvaBetterAuthConfig, 'organization'>> & {
     organization?: Partial<NuvaBetterAuthOrganizationConfig>
@@ -257,7 +274,7 @@ export interface NuvaPublicConfig {
 export interface NuvaResolvedConfig extends Omit<NuvaPublicConfig, 'auth'> {
   auth: NuvaResolvedAuthConfig
   resolvers: {
-    profile: NuvaProfileResolver | null
+    user: NuvaUserResolver | null
     permission: NuvaPermissionResolver | null
     menu: NuvaMenuResolver | null
   }
@@ -268,6 +285,13 @@ export const defaultNuvaApiConfig = {
   envelopeUnwrap: true,
   successCodes: '0',
 } satisfies NuvaApiConfig
+
+export const defaultNuvaRemoteCapabilityConfig = {
+  request: '',
+  resolver: false,
+  map: '',
+  cacheMaxAge: 0,
+} satisfies NuvaRemoteCapabilityConfig
 
 export const defaultNuvaPermissionConfig = {
   source: 'local',
@@ -282,23 +306,33 @@ export const defaultNuvaPermissionConfig = {
     source: 'local',
   },
   remote: {
-    profile: '',
-    permission: '',
-    profileResolver: false,
-    permissionResolver: false,
+    request: '',
+    resolver: false,
+    map: '',
     cacheMaxAge: 0,
   },
 } satisfies NuvaPermissionConfig
 
 export const defaultNuvaAccessMenuConfig = {
-  source: 'none',
+  source: 'route',
+  adapter: '',
   filter: true,
   routePrune: true,
   strictRoute: true,
   cacheMaxAge: 0,
+  local: {
+    items: [],
+  },
+  route: {
+    mode: 'mixed',
+    includeDynamic: false,
+    exclude: [],
+  },
   remote: {
-    menu: '',
-    menuResolver: false,
+    request: '',
+    resolver: false,
+    map: '',
+    cacheMaxAge: 0,
   },
 } satisfies NuvaAccessMenuConfig
 
@@ -325,6 +359,9 @@ export const defaultNuvaAuthConfig = {
     storageKey: 'token',
     header: 'Authorization',
     prefix: 'Bearer',
+  },
+  user: {
+    remote: defaultNuvaRemoteCapabilityConfig,
   },
   permission: defaultNuvaPermissionConfig,
   accessMenu: defaultNuvaAccessMenuConfig,
@@ -357,5 +394,26 @@ export function parseNuvaRemoteRequest(request?: string) {
       url: request,
       method: 'GET',
     } satisfies NuvaRemoteRequestConfig
+  }
+}
+
+export function serializeNuvaRemoteMap(map?: NuvaRemoteMap | null) {
+  if (!map) {
+    return ''
+  }
+
+  return typeof map === 'string' ? map : JSON.stringify(map)
+}
+
+export function parseNuvaRemoteMap(map?: string) {
+  if (!map) {
+    return null
+  }
+
+  try {
+    return JSON.parse(map) as NuvaRemoteMap
+  }
+  catch {
+    return map
   }
 }
