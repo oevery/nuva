@@ -105,7 +105,7 @@ describe('useAccessMenu', () => {
     expect(accessMenu.menus.value.find(item => item.id === 'group')?.children?.map(item => item.id)).toEqual(['users'])
   })
 
-  it('checks route meta access in strict route mode', () => {
+  it('checks route meta access in route visibility mode', () => {
     useRuntimeConfig().public.nuva.auth.permission.local.roles = ['viewer']
     const accessMenu = useAccessMenu()
 
@@ -187,14 +187,33 @@ describe('useAccessMenu', () => {
     expect(menuResolver).toHaveBeenCalledTimes(1)
   })
 
-  it('can keep route menus when route pruning is disabled', () => {
-    useRuntimeConfig().public.nuva.auth.accessMenu.routePrune = false
-    useRuntimeConfig().public.nuva.auth.accessMenu.strictRoute = false
+  it('trusts backend menu visibility while still hiding missing route entries', () => {
+    useRuntimeConfig().public.nuva.auth.accessMenu.visibility = 'backend'
+    useRuntimeConfig().public.nuva.auth.permission.local.roles = []
+    useRuntimeConfig().public.nuva.auth.permission.local.permissions = []
     const accessMenu = useAccessMenu()
 
-    accessMenu.setMenus([{ id: 'missing', title: 'Missing', path: '/missing' }])
+    accessMenu.setMenus([
+      { id: 'dashboard', title: 'Dashboard', path: '/dashboard' },
+      { id: 'users', title: 'Users', path: '/users' },
+      { id: 'missing', title: 'Missing', path: '/missing' },
+    ])
 
-    expect(accessMenu.menus.value.map(item => item.id)).toEqual(['missing'])
+    expect(accessMenu.menus.value.map(item => item.id)).toEqual(['dashboard', 'users'])
+  })
+
+  it('uses menu access fields in menu visibility mode', () => {
+    useRuntimeConfig().public.nuva.auth.accessMenu.visibility = 'menu'
+    useRuntimeConfig().public.nuva.auth.permission.local.permissions = ['report:read']
+    const accessMenu = useAccessMenu()
+
+    accessMenu.setMenus([
+      { id: 'dashboard', title: 'Dashboard', path: '/dashboard', permissions: ['dashboard:view'] },
+      { id: 'reports', title: 'Reports', path: '/reports', permissions: ['report:read'] },
+      { id: 'users', title: 'Users', path: '/users' },
+    ])
+
+    expect(accessMenu.menus.value.map(item => item.id)).toEqual(['reports', 'users'])
   })
 
   it('warns about menus that point to missing routes in development', () => {
@@ -212,6 +231,7 @@ describe('useAccessMenu', () => {
   })
 
   it('warns about menu and route permission mismatches in development', () => {
+    useRuntimeConfig().public.nuva.auth.accessMenu.visibility = 'strict'
     const accessMenu = useAccessMenu()
 
     accessMenu.setMenus([{ id: 'dashboard', title: 'Dashboard', path: '/dashboard', permissions: ['report:read'] }])
@@ -225,6 +245,19 @@ describe('useAccessMenu', () => {
         menuAccess: ['report:read'],
         routeAccess: ['dashboard:view'],
       }),
+    )
+  })
+
+  it('does not warn about route permissions when backend menus omit access fields', () => {
+    useRuntimeConfig().public.nuva.auth.accessMenu.visibility = 'strict'
+    const accessMenu = useAccessMenu()
+
+    accessMenu.setMenus([{ id: 'dashboard', title: 'Dashboard', path: '/dashboard' }])
+
+    expect(accessMenu.menus.value).toHaveLength(1)
+    expect(console.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('permissions do not match route meta permissions'),
+      expect.anything(),
     )
   })
 

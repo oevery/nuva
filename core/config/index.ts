@@ -48,6 +48,7 @@ export type NuvaPermissionCheckReason = 'allowed' | 'missing-permission' | 'miss
 export type NuvaAccessMenuSource = 'route' | 'local' | 'remote' | 'adapter'
 export type NuvaAccessMenuType = 'route' | 'group' | 'link' | 'action' | 'iframe' | 'remote'
 export type NuvaAccessMenuRouteMode = 'auto' | 'meta' | 'mixed'
+export type NuvaAccessMenuVisibility = 'route' | 'backend' | 'menu' | 'strict'
 
 export interface NuvaPermissionCheckContext {
   target?: Record<string, unknown>
@@ -182,9 +183,7 @@ export interface NuvaRouteAccessMenuConfig {
 export interface NuvaAccessMenuConfig {
   source: NuvaAccessMenuSource
   adapter: string
-  filter: boolean
-  routePrune: boolean
-  strictRoute: boolean
+  visibility: NuvaAccessMenuVisibility
   cacheMaxAge: number
   local: NuvaLocalAccessMenuConfig
   route: NuvaRouteAccessMenuConfig
@@ -316,9 +315,7 @@ export const defaultNuvaPermissionConfig = {
 export const defaultNuvaAccessMenuConfig = {
   source: 'route',
   adapter: '',
-  filter: true,
-  routePrune: true,
-  strictRoute: true,
+  visibility: 'route',
   cacheMaxAge: 0,
   local: {
     items: [],

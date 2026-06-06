@@ -85,8 +85,7 @@ describe('permission utils', () => {
     ], [
       { name: 'dashboard', path: '/dashboard', meta: { auth: { permissions: ['dashboard:view'] } } },
     ], {
-      routePrune: true,
-      strictRoute: true,
+      accessMismatch: true,
     })
 
     expect(issues).toEqual([

@@ -137,27 +137,27 @@ function findRoute(item: NuvaAccessMenuItem, routes: Array<{ name?: string | sym
   return item.path ? routes.find(route => route.path === item.path) || null : null
 }
 
-export function validateAccessMenus(items: NuvaAccessMenuItem[], routes: Array<{ name?: string | symbol | null, path: string, meta?: unknown }>, options: { strictRoute?: boolean, routePrune?: boolean } = {}): NuvaAccessMenuValidationIssue[] {
+export function validateAccessMenus(items: NuvaAccessMenuItem[], routes: Array<{ name?: string | symbol | null, path: string, meta?: unknown }>, options: { accessMismatch?: boolean } = {}): NuvaAccessMenuValidationIssue[] {
   const issues: NuvaAccessMenuValidationIssue[] = []
 
   for (const item of items) {
     const route = findRoute(item, routes)
 
-    if (options.routePrune && isRouteMenu(item) && !route) {
+    if (isRouteMenu(item) && !route) {
       issues.push({
         type: 'missing-route',
         menu: item,
       })
     }
 
-    if (route) {
+    if (route && options.accessMismatch) {
       const routeAccess = resolveRouteAccessMeta(route)
 
       for (const field of ['roles', 'permissions', 'scopes'] as const) {
         const menuList = toSortedAccessList(item[field])
         const routeList = toSortedAccessList(routeAccess[field])
 
-        if (menuList.length || (routeList.length && !options.strictRoute)) {
+        if (menuList.length) {
           if (!isSameAccessList(menuList, routeList)) {
             issues.push({
               type: 'access-mismatch',

@@ -1,5 +1,5 @@
 import type { RouteRecordNormalized } from 'vue-router'
-import type { NuvaAccessMenuItem } from '../../../../config'
+import type { NuvaAccessMenuItem, NuvaAccessMenuVisibility } from '../../../../config'
 import { useRouter } from 'vue-router'
 import { useNuvaConfig } from '../../../nuva/runtime/composables/useNuvaConfig'
 import { useAccessMenuAdapter } from '../adapters/registry'
@@ -60,10 +60,6 @@ function isRouteMenu(item: NuvaAccessMenuItem) {
   return !item.external && (!item.type || item.type === 'route') && (!!item.path || !!item.name)
 }
 
-function isGroupMenu(item: NuvaAccessMenuItem) {
-  return item.type === 'group' || (!item.path && !item.name && !item.external)
-}
-
 function describeMenuItem(item: NuvaAccessMenuItem) {
   return item.id || item.name || item.path || item.title || 'unknown'
 }
@@ -77,12 +73,12 @@ function warnAccessMenuIssue(warned: Set<string>, key: string, message: string, 
   console.warn(message, detail)
 }
 
-function warnAccessMenuIssues(items: NuvaAccessMenuItem[], routes: RouteRecordNormalized[], strictRoute: boolean, routePrune: boolean, warned: Set<string>) {
+function warnAccessMenuIssues(items: NuvaAccessMenuItem[], routes: RouteRecordNormalized[], visibility: NuvaAccessMenuVisibility, warned: Set<string>) {
   if (import.meta.env.PROD) {
     return
   }
 
-  for (const issue of validateAccessMenus(items, routes, { strictRoute, routePrune })) {
+  for (const issue of validateAccessMenus(items, routes, { accessMismatch: visibility === 'strict' })) {
     if (issue.type === 'missing-route') {
       warnAccessMenuIssue(
         warned,
@@ -134,24 +130,34 @@ function canAccess(access: AccessCheck, permission: ReturnType<typeof usePermiss
   return true
 }
 
-function filterMenus(items: NuvaAccessMenuItem[], routes: RouteRecordNormalized[], permission: ReturnType<typeof usePermission>, filter: boolean, routePrune: boolean, strictRoute: boolean): NuvaAccessMenuItem[] {
+function getVisibilityRules(visibility: NuvaAccessMenuVisibility) {
+  return {
+    menu: visibility === 'menu' || visibility === 'strict',
+    route: visibility === 'route' || visibility === 'strict',
+  }
+}
+
+function filterMenus(items: NuvaAccessMenuItem[], routes: RouteRecordNormalized[], permission: ReturnType<typeof usePermission>, visibility: NuvaAccessMenuVisibility): NuvaAccessMenuItem[] {
+  const rules = getVisibilityRules(visibility)
+
   return items
     .map<NuvaAccessMenuItem | null>((item) => {
       const route = findRoute(item, routes)
-      const children = filterMenus(item.children || [], routes, permission, filter, routePrune, strictRoute)
+      const children = filterMenus(item.children || [], routes, permission, visibility)
+      const routeMenu = isRouteMenu(item)
 
       if (item.hidden) {
         return null
       }
 
-      if (routePrune && isRouteMenu(item) && !route) {
+      if (routeMenu && !route) {
         return children.length ? withChildren(item, children) : null
       }
 
       const routeAccess = getRouteAccess(route)
-      const routeAllowed = !strictRoute || canAccess(routeAccess, permission)
-      const menuAllowed = !filter || canAccess(item, permission)
-      const selfVisible = item.external || isGroupMenu(item) || !!route || !routePrune
+      const routeAllowed = !rules.route || !routeMenu || canAccess(routeAccess, permission)
+      const menuAllowed = !rules.menu || canAccess(item, permission)
+      const selfVisible = !routeMenu || !!route
 
       if ((!selfVisible || !menuAllowed || !routeAllowed) && !children.length) {
         return null
@@ -178,17 +184,11 @@ export function useAccessMenu() {
   const accessMenuAdapter = adapter
   const rawMenus = computed<NuvaAccessMenuItem[]>(() => sortMenus(accessMenuAdapter.rawMenus?.value || accessMenuAdapter.menus.value))
   const menus = computed<NuvaAccessMenuItem[]>(() => {
-    const routeList = config.accessMenu.routePrune || config.accessMenu.strictRoute
-      ? useRouter().getRoutes()
-      : []
+    const routeList = useRouter().getRoutes()
 
-    if (config.accessMenu.routePrune || config.accessMenu.strictRoute) {
-      warnAccessMenuIssues(rawMenus.value, routeList, config.accessMenu.strictRoute, config.accessMenu.routePrune, warnedAccessMenuIssues)
-    }
+    warnAccessMenuIssues(rawMenus.value, routeList, config.accessMenu.visibility, warnedAccessMenuIssues)
 
-    return config.accessMenu.filter || config.accessMenu.routePrune || config.accessMenu.strictRoute
-      ? filterMenus(rawMenus.value, routeList, permission, config.accessMenu.filter, config.accessMenu.routePrune, config.accessMenu.strictRoute)
-      : rawMenus.value
+    return filterMenus(rawMenus.value, routeList, permission, config.accessMenu.visibility)
   })
 
   async function refresh() {
