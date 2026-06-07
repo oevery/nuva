@@ -158,6 +158,33 @@ describe('useHttpClient runtime chain', () => {
     })
   })
 
+  it('unwraps configurable response envelopes', async () => {
+    mswServer.use(
+      http.get('*/api/custom-envelope', () => {
+        return HttpResponse.json({
+          status: 'SUCCESS',
+          payload: {
+            id: 'custom-1',
+          },
+          error: '',
+        })
+      }),
+    )
+    const config = structuredClone(defaultNuvaPublicConfig)
+    config.api.successCodes = 'SUCCESS'
+    config.api.response = {
+      codeKey: 'status',
+      messageKey: 'error',
+      dataKey: 'payload',
+    }
+
+    const client = createHttpClient(config)
+
+    await expect(client.Get<{ id: string }>('/api/custom-envelope')).resolves.toEqual({
+      id: 'custom-1',
+    })
+  })
+
   it('reuses cached clients until runtime config changes the cache key', () => {
     const firstClient = useHttpClient()
     const secondClient = useHttpClient()

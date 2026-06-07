@@ -38,6 +38,8 @@ function getHttpClientCacheKey(nuvaConfig: NuvaPublicConfig) {
   return `nuva:http:${hash({
     baseURL: resolveNuxtBaseURL(apiConfig.baseURL),
     envelopeUnwrap: apiConfig.envelopeUnwrap,
+    response: apiConfig.response,
+    pagination: apiConfig.pagination,
     successCodes: apiConfig.successCodes,
     token: authConfig.token,
   })}`

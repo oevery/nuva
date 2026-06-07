@@ -37,6 +37,75 @@ export interface NuvaApiConfig {
    * @default `0`
    */
   successCodes: string
+  /**
+   * 通用响应包裹字段配置。
+   */
+  response: NuvaApiResponseProtocolConfig
+  /**
+   * 分页请求和响应默认协议。
+   */
+  pagination: NuvaApiPaginationConfig
+}
+
+export interface NuvaApiResponseProtocolConfig {
+  /**
+   * 业务状态码字段路径。
+   * @default `code`
+   */
+  codeKey: string
+  /**
+   * 业务消息字段路径。
+   * @default `message`
+   */
+  messageKey: string
+  /**
+   * 响应数据字段路径。
+   * @default `data`
+   */
+  dataKey: string
+}
+
+export interface NuvaApiPaginationConfig {
+  /**
+   * 请求页码字段。
+   * @default `pageNum`
+   */
+  pageField: string
+  /**
+   * 请求每页数量字段。
+   * @default `pageSize`
+   */
+  pageSizeField: string
+  /**
+   * 响应列表字段路径。
+   * @default `list`
+   */
+  listKey: string
+  /**
+   * 响应总数字段路径。
+   * @default `total`
+   */
+  totalKey: string
+  /**
+   * 初始页码。
+   * @default `1`
+   */
+  initialPage: number
+  /**
+   * 初始每页数量。
+   * @default `10`
+   */
+  initialPageSize: number
+  /**
+   * 是否默认过滤 undefined、null 和空字符串查询参数。
+   * @default `true`
+   */
+  cleanParams: boolean
+}
+
+export interface NuvaApiConfigOptions extends Partial<Omit<NuvaApiConfig, 'response' | 'pagination'>> {
+  response?: Partial<NuvaApiResponseProtocolConfig>
+  pagination?: Partial<NuvaApiPaginationConfig>
 }
 
 export type NuvaAuthProvider = 'token' | 'better-auth' | (string & {})
@@ -236,7 +305,7 @@ export interface NuvaAuthResolvers {
 }
 
 export interface NuvaConfigFile {
-  api?: Partial<NuvaApiConfig>
+  api?: NuvaApiConfigOptions
   auth?: NuvaAuthModuleOptions
   resolvers?: NuvaAuthResolvers
 }
@@ -283,6 +352,20 @@ export const defaultNuvaApiConfig = {
   baseURL: '/api',
   envelopeUnwrap: true,
   successCodes: '0',
+  response: {
+    codeKey: 'code',
+    messageKey: 'message',
+    dataKey: 'data',
+  },
+  pagination: {
+    pageField: 'pageNum',
+    pageSizeField: 'pageSize',
+    listKey: 'list',
+    totalKey: 'total',
+    initialPage: 1,
+    initialPageSize: 10,
+    cleanParams: true,
+  },
 } satisfies NuvaApiConfig
 
 export const defaultNuvaRemoteCapabilityConfig = {

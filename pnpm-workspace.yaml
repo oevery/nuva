@@ -12,6 +12,7 @@ overrides:
   '@oevery/nuva': 'workspace:*'
 
 catalog:
+  '@alova/wormhole': ^1.0.0
   '@antfu/eslint-config': ^9.0.0
   '@iconify-json/lucide': ^1.2.111
   '@nuxt/content': ^3.14.0

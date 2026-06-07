@@ -3,6 +3,7 @@ import { isSameOriginURL, normalizeSuccessCodes, resolveNuxtBaseURL } from '../.
 import { handleHttpResponse } from '../../app/utils/http/response'
 import { inferResponseType, resolveResponseType } from '../../app/utils/http/response-type'
 import { applyAuthHeader } from '../../app/utils/http/token'
+import { defaultNuvaApiConfig } from '../../config'
 
 function createMethod(meta: Record<string, unknown> = {}) {
   return {
@@ -14,6 +15,7 @@ function createMethod(meta: Record<string, unknown> = {}) {
 }
 
 const apiConfig: NuvaApiConfig = {
+  ...defaultNuvaApiConfig,
   baseURL: '/api',
   envelopeUnwrap: true,
   successCodes: '0,200,SUCCESS',
@@ -95,6 +97,27 @@ describe('http utils', () => {
       statusCode: 200,
       statusMessage: 'failed',
     })
+  })
+
+  it('validates api envelopes without data field', async () => {
+    await expect(handleHttpResponse(
+      new Response(JSON.stringify({ code: 'FAIL', message: 'failed' }), {
+        headers: { 'content-type': 'application/json' },
+      }),
+      createMethod(),
+      apiConfig,
+    )).rejects.toMatchObject({
+      statusCode: 200,
+      statusMessage: 'failed',
+    })
+
+    await expect(handleHttpResponse(
+      new Response(JSON.stringify({ code: 0, message: 'ok' }), {
+        headers: { 'content-type': 'application/json' },
+      }),
+      createMethod(),
+      apiConfig,
+    )).resolves.toBeUndefined()
   })
 
   it('throws transport errors for non-ok responses', async () => {

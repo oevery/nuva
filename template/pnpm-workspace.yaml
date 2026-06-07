@@ -3,6 +3,9 @@ shellEmulator: true
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 4320
 
+catalog:
+  '@alova/wormhole': ^1.0.0
+
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true

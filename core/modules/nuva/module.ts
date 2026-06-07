@@ -1,6 +1,6 @@
-import type { NuvaAuthConfig, NuvaConfigFile, NuvaModuleOptions, NuvaRemoteCapabilityOptions } from '../../config'
+import type { NuvaApiConfig, NuvaAuthConfig, NuvaConfigFile, NuvaModuleOptions, NuvaRemoteCapabilityOptions } from '../../config'
 import process from 'node:process'
-import { addImports, addPluginTemplate, createResolver, defineNuxtModule, importModule, resolvePath } from '@nuxt/kit'
+import { addImports, addPluginTemplate, addTemplate, createResolver, defineNuxtModule, importModule, resolvePath } from '@nuxt/kit'
 import { defu } from 'defu'
 import { defaultNuvaAuthConfig, defaultNuvaPublicConfig, serializeNuvaRemoteMap, serializeNuvaRemoteRequest } from '../../config'
 
@@ -73,6 +73,47 @@ function assertAuthSecurityConfig(authConfig: NuvaAuthConfig) {
   if (authConfig.user.remote.request.includes('/demo-auth') || authConfig.permission.remote.request.includes('/demo-auth') || authConfig.accessMenu.remote.request.includes('/demo-auth')) {
     throw new Error('[nuva/auth] demo auth endpoints cannot be used in production. Replace /demo-auth endpoints with real authentication and permission APIs before deployment.')
   }
+}
+
+function toTypePropertyName(key: string, fallback: string) {
+  const propertyName = key || fallback
+
+  if (propertyName.includes('.')) {
+    return fallback
+  }
+
+  return /^[a-z_$][\w$]*$/i.test(propertyName) ? propertyName : JSON.stringify(propertyName)
+}
+
+function createNuvaApiModule(apiConfig: NuvaApiConfig) {
+  const responseConfig = apiConfig?.response || defaultNuvaPublicConfig.api.response
+  const paginationConfig = apiConfig?.pagination || defaultNuvaPublicConfig.api.pagination
+  const codeKey = toTypePropertyName(responseConfig.codeKey || defaultNuvaPublicConfig.api.response.codeKey, 'code')
+  const messageKey = toTypePropertyName(responseConfig.messageKey || defaultNuvaPublicConfig.api.response.messageKey, 'message')
+  const dataKey = toTypePropertyName(responseConfig.dataKey || defaultNuvaPublicConfig.api.response.dataKey, 'data')
+  const pageField = toTypePropertyName(paginationConfig.pageField || defaultNuvaPublicConfig.api.pagination.pageField, 'pageNum')
+  const pageSizeField = toTypePropertyName(paginationConfig.pageSizeField || defaultNuvaPublicConfig.api.pagination.pageSizeField, 'pageSize')
+  const listKey = toTypePropertyName(paginationConfig.listKey || defaultNuvaPublicConfig.api.pagination.listKey, 'list')
+  const totalKey = toTypePropertyName(paginationConfig.totalKey || defaultNuvaPublicConfig.api.pagination.totalKey, 'total')
+
+  return `export interface ApiResponse<T = unknown> {
+    ${codeKey}: number | string
+    ${messageKey}?: string
+    ${dataKey}: T
+  }
+
+  export interface PageParams {
+    ${pageField}: number
+    ${pageSizeField}: number
+  }
+
+  export interface PageResult<T> {
+    ${listKey}: T[]
+    ${totalKey}: number
+  }
+
+  export type PageQuery<T extends object = Record<string, never>> = PageParams & T
+`
 }
 
 function createRuntimeRemoteConfig(remote: NuvaRemoteCapabilityOptions) {
@@ -188,6 +229,14 @@ export default defineNuxtModule<NuvaModuleOptions>({
       defaultNuvaPublicConfig.api,
     )
 
+    const apiTypeTemplate = addTemplate({
+      filename: 'nuva/api.ts',
+      write: true,
+      getContents: () => createNuvaApiModule(apiConfig),
+    })
+    nuxt.options.alias ||= {}
+    nuxt.options.alias['#nuva/api'] = apiTypeTemplate.dst
+
     const publicConfig = defu({
       api: apiConfig,
       auth: authConfig,
@@ -230,6 +279,14 @@ export default defineNuxtModule<NuvaModuleOptions>({
       {
         name: 'useNuvaConfig',
         from: resolver.resolve('./runtime/composables/useNuvaConfig'),
+      },
+      {
+        name: 'useNuvaPageApi',
+        from: resolver.resolve('../../app/composables/useNuvaPageApi'),
+      },
+      {
+        name: 'createNuvaResourceApi',
+        from: resolver.resolve('../../app/composables/createNuvaResourceApi'),
       },
     ])
   },

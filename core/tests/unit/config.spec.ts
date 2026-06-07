@@ -1,4 +1,4 @@
-import { defaultNuvaAuthConfig, parseNuvaRemoteRequest, serializeNuvaRemoteRequest } from '../../config'
+import { defaultNuvaAuthConfig, defaultNuvaPublicConfig, parseNuvaRemoteRequest, serializeNuvaRemoteRequest } from '../../config'
 
 describe('core config helpers', () => {
   it('serializes and parses remote request objects', () => {
@@ -25,5 +25,20 @@ describe('core config helpers', () => {
   it('keeps auth defaults stable', () => {
     expect(defaultNuvaAuthConfig.publicRoutes).toContain(defaultNuvaAuthConfig.loginPath)
     expect(defaultNuvaAuthConfig.token.header).toBe('Authorization')
+  })
+
+  it('keeps api protocol defaults stable', () => {
+    expect(defaultNuvaPublicConfig.api.response).toEqual({
+      codeKey: 'code',
+      messageKey: 'message',
+      dataKey: 'data',
+    })
+    expect(defaultNuvaPublicConfig.api.pagination).toMatchObject({
+      pageField: 'pageNum',
+      pageSizeField: 'pageSize',
+      listKey: 'list',
+      totalKey: 'total',
+      cleanParams: true,
+    })
   })
 })

@@ -1,10 +1,10 @@
-import type { NuvaApiConfig } from '@oevery/nuva/config'
+import type { NuvaApiConfigOptions } from '@oevery/nuva/config'
 
 const api = {
   baseURL: '/api',
   envelopeUnwrap: true,
   successCodes: '0,200,SUCCESS',
-} satisfies NuvaApiConfig
+} satisfies NuvaApiConfigOptions
 
 export default defineNuxtConfig({
   extends: ['@oevery/nuva'],

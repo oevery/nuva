@@ -1,6 +1,15 @@
 import { defineNuvaConfig } from '@oevery/nuva/config'
 
 export default defineNuvaConfig({
+  api: {
+    pagination: {
+      pageField: 'pageNum',
+      pageSizeField: 'pageSize',
+      listKey: 'list',
+      totalKey: 'total',
+      cleanParams: true,
+    },
+  },
   auth: {
     provider: 'token',
     loginPath: '/login',

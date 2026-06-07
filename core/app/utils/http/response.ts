@@ -10,8 +10,16 @@ interface ApiEnvelope<T = unknown> {
   data: T
 }
 
-function isApiEnvelope(data: unknown): data is ApiEnvelope {
-  return typeof data === 'object' && data !== null && 'code' in data && 'data' in data
+function getValueByPath(value: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((currentValue, key) => {
+    return currentValue && typeof currentValue === 'object' ? (currentValue as Record<string, unknown>)[key] : undefined
+  }, value)
+}
+
+function isApiEnvelope(data: unknown, config: NuvaApiConfig): data is ApiEnvelope {
+  return typeof data === 'object'
+    && data !== null
+    && getValueByPath(data, config.response.codeKey) !== undefined
 }
 
 function isSuccessCode(code: number | string, successCodes: Array<number | string>) {
@@ -60,16 +68,19 @@ export async function handleHttpResponse(response: Response, method: Method, con
     })
   }
 
-  if (responseType === 'json' && envelopeUnwrap && isApiEnvelope(data)) {
-    if (!isSuccessCode(data.code, successCodes)) {
+  if (responseType === 'json' && envelopeUnwrap && isApiEnvelope(data, config)) {
+    const code = getValueByPath(data, config.response.codeKey) as number | string
+    const message = getValueByPath(data, config.response.messageKey) as string | undefined
+
+    if (!isSuccessCode(code, successCodes)) {
       throw createError({
         statusCode: 200,
-        statusMessage: data.message || 'Business request failed',
+        statusMessage: message || 'Business request failed',
         data,
       })
     }
 
-    return data.data
+    return getValueByPath(data, config.response.dataKey)
   }
 
   return data

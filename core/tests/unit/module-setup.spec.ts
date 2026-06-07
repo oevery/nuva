@@ -137,6 +137,81 @@ describe('nuxt module setup', () => {
     expect(auth.betterAuth.organization.hasPermission).toBe(true)
   })
 
+  it('generates api protocol types from nuva api config', async () => {
+    const nuvaModule = (await import('../../modules/nuva/module')).default as any
+    const nuxt = {
+      options: {
+        rootDir: '/fixture',
+        runtimeConfig: {
+          public: {
+            nuva: {},
+          },
+        },
+      },
+    }
+
+    await nuvaModule.setup({
+      api: {
+        response: {
+          codeKey: 'status',
+          messageKey: 'msg',
+          dataKey: 'payload',
+        },
+        pagination: {
+          pageField: 'current-page',
+          pageSizeField: 'perPage',
+          listKey: 'items',
+          totalKey: 'totalCount',
+        },
+      },
+    }, nuxt)
+
+    const apiTemplate = kit.addTemplate.mock.calls.find(([template]) => template.filename === 'nuva/api.ts')?.[0]
+    const contents = apiTemplate.getContents()
+
+    expect(contents).toContain('status: number | string')
+    expect(contents).toContain('payload: T')
+    expect(contents).toContain('"current-page": number')
+    expect(contents).toContain('perPage: number')
+    expect(contents).toContain('items: T[]')
+    expect(contents).toContain('totalCount: number')
+  })
+
+  it('falls back to default generated type fields for dotted api paths', async () => {
+    const nuvaModule = (await import('../../modules/nuva/module')).default as any
+    const nuxt = {
+      options: {
+        rootDir: '/fixture',
+        runtimeConfig: {
+          public: {
+            nuva: {},
+          },
+        },
+      },
+    }
+
+    await nuvaModule.setup({
+      api: {
+        response: {
+          dataKey: 'data.records',
+        },
+        pagination: {
+          listKey: 'page.items',
+          totalKey: 'page.total',
+        },
+      },
+    }, nuxt)
+
+    const apiTemplate = kit.addTemplate.mock.calls.find(([template]) => template.filename === 'nuva/api.ts')?.[0]
+    const contents = apiTemplate.getContents()
+
+    expect(contents).toContain('data: T')
+    expect(contents).toContain('list: T[]')
+    expect(contents).toContain('total: number')
+    expect(contents).not.toContain('"data.records"')
+    expect(contents).not.toContain('"page.items"')
+  })
+
   it('keeps better-auth provider session-only when organization is not enabled', async () => {
     const nuvaModule = (await import('../../modules/nuva/module')).default as any
     const nuxt = {

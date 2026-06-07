@@ -1,6 +1,6 @@
 export interface ApiResponse<T = unknown> {
-  code: number
-  message: string
+  code: number | string
+  message?: string
   data: T
 }
 
@@ -12,6 +12,8 @@ export interface PageParams {
 export interface PageResult<T> {
   list: T[]
   total: number
-  pageNum: number
-  pageSize: number
+  pageNum?: number
+  pageSize?: number
 }
+
+export type PageQuery<T extends object = Record<string, never>> = PageParams & T
